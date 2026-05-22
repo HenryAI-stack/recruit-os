@@ -4,7 +4,7 @@ import Badge from '../components/Badge.jsx'
 import PhotoUpload from '../components/PhotoUpload.jsx'
 
 const STATUSES = ['Eingegangen', 'Erstgespräch', 'Technisches Gespräch', 'Ausgewählt', 'Abgelehnt']
-const EMPTY    = { firstName:'', lastName:'', email:'', phone:'', jobId:'', status:'Eingegangen', notes:'' }
+const EMPTY    = { firstName:'', lastName:'', email:'', phone:'', jobId:'', status:'Eingegangen', notes:'', appliedAt:'' }
 
 const AVATAR_COLORS = [
   ['#B5D4F4','#0C447C'], ['#C0DD97','#173404'],
@@ -98,7 +98,8 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
                 <span>✉ {candidate.email}</span>
                 <span>📞 {candidate.phone}</span>
                 {job && <span>💼 {job.title}</span>}
-                <span style={{ color:'#aaa' }}>Seit {candidate.createdAt}</span>
+                {candidate.appliedAt && <span>📅 Beworben am {candidate.appliedAt}</span>}
+                <span style={{ color:'#aaa' }}>Erfasst {candidate.createdAt}</span>
               </div>
               {candidate.notes && (
                 <p style={{ fontSize:12, color:'#555', padding:'8px 10px', background:'#f5f5f4', borderRadius:8, lineHeight:1.6 }}>
@@ -193,9 +194,12 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
             <Field label="Vorname"  value={form.firstName} onChange={v => setForm({...form, firstName:v})} placeholder="Vorname" />
             <Field label="Nachname" value={form.lastName}  onChange={v => setForm({...form, lastName:v})}  placeholder="Nachname" />
           </div>
-          <Field label="E-Mail"  value={form.email}  onChange={v => setForm({...form, email:v})}  placeholder="email@beispiel.at" />
-          <Field label="Telefon" value={form.phone}  onChange={v => setForm({...form, phone:v})}  placeholder="+43 ..." />
-          <Field label="Stelle"  value={form.jobId}  onChange={v => setForm({...form, jobId:v})}  select={jobs.map(j => ({v:j.id, l:j.title}))} />
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <Field label="E-Mail"          value={form.email}     onChange={v => setForm({...form, email:v})}     placeholder="email@beispiel.at" />
+            <Field label="Telefon"         value={form.phone}     onChange={v => setForm({...form, phone:v})}     placeholder="+43 ..." />
+          </div>
+          <Field label="Bewerbungsdatum"   value={form.appliedAt} onChange={v => setForm({...form, appliedAt:v})} type="date" />
+          <Field label="Stelle"            value={form.jobId}     onChange={v => setForm({...form, jobId:v})}     select={jobs.map(j => ({v:j.id, l:j.title}))} />
           <Field label="Status"  value={form.status} onChange={v => setForm({...form, status:v})} select={STATUSES} />
           <Field label="Notizen" value={form.notes}  onChange={v => setForm({...form, notes:v})}  placeholder="Erste Eindrücke..." multiline />
           <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
@@ -219,7 +223,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
 
       <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
         <thead>
-          <tr>{['Name','Status','Stelle','E-Mail','Erfasst'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+          <tr>{['Name','Status','Stelle','Beworben am','E-Mail'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
         </thead>
         <tbody>
           {filtered.map(c => {
@@ -237,8 +241,8 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
                 </td>
                 <td style={td}><Badge status={c.status} /></td>
                 <td style={td}>{j?.title ?? '–'}</td>
+                <td style={td}>{c.appliedAt || '–'}</td>
                 <td style={td}>{c.email}</td>
-                <td style={td}>{c.createdAt}</td>
               </tr>
             )
           })}
