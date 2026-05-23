@@ -4,6 +4,7 @@ const NAV = [
   { view: 'jobs',        label: 'Stellenangebote',  icon: '💼' },
   { view: 'candidates',  label: 'Bewerber',         icon: '👥' },
   { view: 'interviews',  label: 'Gespräche',        icon: '🗓' },
+  { view: 'archive',     label: 'Archiv',           icon: '📦' },
 ]
 
 export default function Sidebar({ view, onNavigate, user, onLogout }) {
