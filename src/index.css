@@ -1,38 +1,124 @@
-/* src/index.css */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f4;
-  color: #1c1917;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: #F7F7F5;
+  color: #1A1A1A;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-:root {
-  --blue:   #378ADD;
-  --amber:  #BA7517;
-  --purple: #7F77DD;
-  --green:  #639922;
-  --red:    #E24B4A;
-  --sidebar-w: 220px;
-  --radius: 10px;
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: #D9D9D4; border-radius: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Typography ──────────────────────────────────────────────────── */
+h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
+h3 { font-size: 14px; font-weight: 600; }
+
+/* ── Reusable card ───────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border: 1px solid #EBEBEA;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
 }
+.card + .card { margin-top: 10px; }
 
-/* Status badge colours */
-.badge { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:100px; font-size:11px; font-weight:500; white-space:nowrap; }
-.badge-dot { width:6px; height:6px; border-radius:50%; }
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; cursor: pointer; border: 1px solid #DDDDD8;
+  background: #fff; color: #1A1A1A; transition: all .15s;
+  white-space: nowrap; font-family: inherit;
+}
+.btn:hover { background: #F7F7F5; border-color: #C8C8C3; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
 
-.status-Eingegangen           { background:#E6F1FB; color:#0C447C; }
-.status-Eingegangen .badge-dot { background:#378ADD; }
-.status-Erstgespräch           { background:#FAEEDA; color:#633806; }
-.status-Erstgespräch .badge-dot { background:#BA7517; }
-.status-Technisches_Gespräch   { background:#EEEDFE; color:#26215C; }
-.status-Technisches_Gespräch .badge-dot { background:#7F77DD; }
-.status-Ausgewählt             { background:#EAF3DE; color:#173404; }
-.status-Ausgewählt .badge-dot  { background:#639922; }
-.status-Abgelehnt              { background:#FCEBEB; color:#501313; }
-.status-Abgelehnt .badge-dot   { background:#E24B4A; }
+.btn-primary {
+  background: #1A1A1A; color: #fff; border-color: #1A1A1A;
+}
+.btn-primary:hover { background: #333; border-color: #333; }
 
-/* Scrollbar */
-::-webkit-scrollbar { width:6px; }
-::-webkit-scrollbar-thumb { background:#d4d4d0; border-radius:3px; }
+.btn-danger {
+  color: #C0392B; border-color: #F5C6C3; background: #FEF8F7;
+}
+.btn-danger:hover { background: #FDECEA; }
+
+.btn-ghost {
+  border-color: transparent; background: transparent; padding: 5px;
+}
+.btn-ghost:hover { background: #F0F0EE; border-color: transparent; }
+
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-icon { padding: 6px; border-radius: 7px; }
+
+/* ── Form fields ─────────────────────────────────────────────────── */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block; font-size: 11px; font-weight: 600;
+  color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px;
+}
+.field input, .field textarea, .field select {
+  width: 100%; padding: 8px 11px;
+  border: 1px solid #DDDDD8; border-radius: 8px;
+  font-size: 13px; font-family: inherit; color: #1A1A1A;
+  background: #fff; transition: border-color .15s;
+}
+.field input:focus, .field textarea:focus, .field select:focus {
+  outline: none; border-color: #1A1A1A; box-shadow: 0 0 0 3px rgba(0,0,0,.07);
+}
+.field textarea { resize: vertical; min-height: 76px; }
+
+/* ── Table ───────────────────────────────────────────────────────── */
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+  text-align: left; padding: 8px 14px; font-size: 10px; font-weight: 700;
+  color: #999; border-bottom: 1px solid #EBEBEA;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.table td { padding: 11px 14px; border-bottom: 1px solid #F3F3F1; }
+.table tbody tr { cursor: pointer; transition: background .1s; }
+.table tbody tr:hover td { background: #F9F9F7; }
+.table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Status badges ───────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 100px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+.s-Eingegangen           { background: #EBF4FF; color: #1A56DB; }
+.s-Eingegangen .badge-dot { background: #3B82F6; }
+.s-Erstgespräch           { background: #FEF3C7; color: #92400E; }
+.s-Erstgespräch .badge-dot { background: #F59E0B; }
+.s-Technisches-Gespräch   { background: #F0EEFF; color: #4C1D95; }
+.s-Technisches-Gespräch .badge-dot { background: #7C3AED; }
+.s-Ausgewählt             { background: #ECFDF5; color: #065F46; }
+.s-Ausgewählt .badge-dot  { background: #10B981; }
+.s-Abgelehnt              { background: #FEF2F2; color: #991B1B; }
+.s-Abgelehnt .badge-dot   { background: #EF4444; }
+
+/* ── Page header ─────────────────────────────────────────────────── */
+.page-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 24px;
+}
+.page-title { font-size: 20px; font-weight: 700; letter-spacing: -.4px; color: #1A1A1A; }
+.page-sub   { font-size: 13px; color: #999; margin-top: 2px; }
+
+/* ── Section header ──────────────────────────────────────────────── */
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.section-title { font-size: 13px; font-weight: 700; color: #1A1A1A; }
+
+/* ── Divider ─────────────────────────────────────────────────────── */
+.divider { height: 1px; background: #EBEBEA; margin: 18px 0; }
