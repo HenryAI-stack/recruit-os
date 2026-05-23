@@ -1,7 +1,8 @@
 // src/views/InterviewsView.jsx
 import { useState } from 'react'
-import Badge from '../components/Badge.jsx'
-import Icon  from '../components/Icon.jsx'
+import Badge    from '../components/Badge.jsx'
+import Icon     from '../components/Icon.jsx'
+import { useT } from '../lib/i18n.jsx'
 
 const AV_COLORS = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
 
@@ -12,7 +13,7 @@ function Avatar({ name, photo, size=36 }) {
   return <div style={{ width:size,height:size,borderRadius:'50%',background:bg,color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.34,fontWeight:700,flexShrink:0 }}>{ini}</div>
 }
 
-function Field({ label, value, onChange, placeholder, multiline, select, type }) {
+function Field({ label,value,onChange,placeholder,multiline,select,type }) {
   return (
     <div className="field">
       <label>{label}</label>
@@ -29,6 +30,9 @@ function Field({ label, value, onChange, placeholder, multiline, select, type })
 }
 
 export default function InterviewsView({ jobs, candidates, interviews, persistInterviews }) {
+  const { t } = useT()
+  const ti = t.interviews; const tc = t.common
+
   const [editingId, setEditingId] = useState(null)
   const [editForm,  setEditForm]  = useState({})
   const [saving,    setSaving]    = useState(false)
@@ -44,25 +48,29 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
 
   async function handleSave() {
     setSaving(true)
-    await persistInterviews(interviews.map(i => i.id===editingId ? { ...i, ...editForm } : i))
+    await persistInterviews(interviews.map(i=>i.id===editingId?{...i,...editForm}:i))
     setEditingId(null); setSaving(false)
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Gespräch löschen?')) return
+    if (!window.confirm(ti.confirmDelete)) return
     await persistInterviews(interviews.filter(i=>i.id!==id))
   }
+
+  const ratingOpts = [
+    {v:'0',l:ti.noRating},{v:'1',l:'★ 1/5'},{v:'2',l:'★★ 2/5'},
+    {v:'3',l:'★★★ 3/5'},{v:'4',l:'★★★★ 4/5'},{v:'5',l:'★★★★★ 5/5'}
+  ]
 
   function IvCard({ iv }) {
     const c = candidates.find(x=>x.id===iv.candidateId)
     const j = jobs.find(x=>x.id===iv.jobId)
     if (!c) return null
-    const name = `${c.firstName} ${c.lastName}`
+    const name      = `${c.firstName} ${c.lastName}`
     const isEditing = editingId===iv.id
 
     return (
       <div style={{ background:'#fff', border:'1px solid #EBEBEA', borderRadius:12, marginBottom:10, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
-        {/* Header row */}
         <div style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px' }}>
           <Avatar name={name} photo={c.photo} size={36} />
           <div style={{ flex:1, minWidth:0 }}>
@@ -72,26 +80,24 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
             </div>
             <div style={{ display:'flex', gap:12, fontSize:11, color:'#aaa', marginTop:3 }}>
               {j && <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="briefcase" size={11} color="#ccc" />{j.title}</span>}
-              <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="calendar"  size={11} color="#ccc" />{iv.scheduledAt?.replace('T',' ').slice(0,16)||'–'}</span>
-              <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="users"    size={11} color="#ccc" />{iv.interviewer||'–'}</span>
+              <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="calendar"  size={11} color="#ccc" />{iv.scheduledAt?.replace('T',' ').slice(0,16)||tc.noData}</span>
+              <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="users"     size={11} color="#ccc" />{iv.interviewer||tc.noData}</span>
             </div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <Badge status={c.status} />
-            <span style={{ fontSize:11, padding:'2px 8px', borderRadius:100, fontWeight:600,
-              background: iv.done?'#ECFDF5':'#EBF4FF', color: iv.done?'#065F46':'#1A56DB' }}>
-              {iv.done?'✓ Abgeschlossen':'⏱ Geplant'}
+            <span style={{ fontSize:11, padding:'2px 8px', borderRadius:100, fontWeight:600, background:iv.done?'#ECFDF5':'#EBF4FF', color:iv.done?'#065F46':'#1A56DB' }}>
+              {iv.done ? ti.statusDone : ti.statusPlanned}
             </span>
-            <button className="btn btn-ghost btn-icon" title="Bearbeiten" onClick={() => isEditing ? setEditingId(null) : startEdit(iv)}>
+            <button className="btn btn-ghost btn-icon" onClick={() => isEditing ? setEditingId(null) : startEdit(iv)}>
               <Icon name={isEditing?'x':'edit'} size={14} color="#aaa" />
             </button>
-            <button className="btn btn-ghost btn-icon" title="Löschen" onClick={() => handleDelete(iv.id)}>
+            <button className="btn btn-ghost btn-icon" onClick={() => handleDelete(iv.id)}>
               <Icon name="trash" size={14} color="#f87171" />
             </button>
           </div>
         </div>
 
-        {/* Feedback preview (collapsed) */}
         {!isEditing && iv.feedback && (
           <div style={{ padding:'0 16px 12px', borderTop:'1px solid #F3F3F1' }}>
             <p style={{ fontSize:12,color:'#555',padding:'8px 10px',background:'#F7F7F5',borderRadius:8,lineHeight:1.65,marginTop:10 }}>{iv.feedback}</p>
@@ -99,23 +105,22 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
           </div>
         )}
 
-        {/* Inline edit form */}
         {isEditing && (
           <div style={{ padding:'14px 16px', borderTop:'1px solid #EBEBEA', background:'#FAFAF9' }}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <Field label="Gesprächsart"    value={editForm.type}         onChange={v=>F('type',v)}         select={['Erstgespräch','Technisches Gespräch','Fachgespräch','HR-Interview','Finalgespräch']} />
-              <Field label="Datum & Uhrzeit" value={editForm.scheduledAt}  onChange={v=>F('scheduledAt',v)}  type="datetime-local" />
+              <Field label={ti.type}        value={editForm.type}        onChange={v=>F('type',v)}        select={ti.types} />
+              <Field label={ti.dateTime}    value={editForm.scheduledAt} onChange={v=>F('scheduledAt',v)} type="datetime-local" />
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <Field label="Interviewer" value={editForm.interviewer} onChange={v=>F('interviewer',v)} placeholder="Name" />
-              <Field label="Status"      value={editForm.done?'1':'0'} onChange={v=>F('done',v==='1')} select={[{v:'0',l:'Geplant'},{v:'1',l:'Abgeschlossen'}]} />
+              <Field label={ti.interviewer} value={editForm.interviewer} onChange={v=>F('interviewer',v)} placeholder="Name" />
+              <Field label={ti.statusLabel} value={editForm.done?'1':'0'} onChange={v=>F('done',v==='1')} select={[{v:'0',l:ti.statusPlanned},{v:'1',l:ti.statusDone}]} />
             </div>
-            <Field label="Feedback & Notizen" value={editForm.feedback} onChange={v=>F('feedback',v)} placeholder="Gesprächsnotizen..." multiline />
-            <Field label="Bewertung" value={String(editForm.rating)} onChange={v=>F('rating',Number(v))} select={[{v:'0',l:'Keine'},{v:'1',l:'★ 1/5'},{v:'2',l:'★★ 2/5'},{v:'3',l:'★★★ 3/5'},{v:'4',l:'★★★★ 4/5'},{v:'5',l:'★★★★★ 5/5'}]} />
+            <Field label={ti.feedback} value={editForm.feedback} onChange={v=>F('feedback',v)} multiline />
+            <Field label={ti.rating}   value={String(editForm.rating)} onChange={v=>F('rating',Number(v))} select={ratingOpts} />
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
-              <button className="btn btn-sm" onClick={()=>setEditingId(null)}>Abbrechen</button>
+              <button className="btn btn-sm" onClick={() => setEditingId(null)}>{tc.cancel}</button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                <Icon name="save" size={13} color="#fff" />{saving?'Speichern…':'Speichern'}
+                <Icon name="save" size={13} color="#fff" />{saving?tc.saving:tc.save}
               </button>
             </div>
           </div>
@@ -128,16 +133,16 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Gespräche</h1>
-          <p className="page-sub">{planned.length} geplant · {completed.length} abgeschlossen</p>
+          <h1 className="page-title">{ti.title}</h1>
+          <p className="page-sub">{ti.subtitle.replace('{planned}',planned.length).replace('{done}',completed.length)}</p>
         </div>
       </div>
 
       {interviews.length===0 && (
         <div style={{ textAlign:'center', padding:'70px 0', color:'#ccc' }}>
           <Icon name="calendar" size={40} color="#ddd" style={{ margin:'0 auto 14px', display:'block' }} />
-          <p style={{ fontSize:14, fontWeight:500, color:'#bbb' }}>Noch keine Gespräche erfasst</p>
-          <p style={{ fontSize:13, marginTop:6 }}>Gespräche werden bei einzelnen Bewerbern angelegt.</p>
+          <p style={{ fontSize:14, fontWeight:500, color:'#bbb' }}>{ti.noInterviews}</p>
+          <p style={{ fontSize:13, marginTop:6 }}>{ti.noInterviewsSub}</p>
         </div>
       )}
 
@@ -145,7 +150,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
         <div style={{ marginBottom:24 }}>
           <div className="section-header">
             <span className="section-title" style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <Icon name="clock" size={14} color="#3B82F6" />Geplante Gespräche
+              <Icon name="clock" size={14} color="#3B82F6" />{ti.planned}
             </span>
           </div>
           {planned.map(iv=><IvCard key={iv.id} iv={iv} />)}
@@ -156,7 +161,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
         <div>
           <div className="section-header">
             <span className="section-title" style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <Icon name="check" size={14} color="#10B981" />Abgeschlossene Gespräche
+              <Icon name="check" size={14} color="#10B981" />{ti.completed}
             </span>
           </div>
           {completed.map(iv=><IvCard key={iv.id} iv={iv} />)}
