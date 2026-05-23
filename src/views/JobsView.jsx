@@ -4,7 +4,7 @@ import Badge from '../components/Badge.jsx'
 
 const EMPTY_JOB = { title: '', dept: '', location: '', desc: '', links: [], isOpen: true }
 
-export default function JobsView({ jobs, candidates, persistJobs }) {
+export default function JobsView({ jobs, candidates, persistJobs, onArchive }) {
   const [selected, setSelected] = useState(null)   // job id for detail view
   const [showForm, setShowForm] = useState(false)
   const [form, setForm]         = useState(EMPTY_JOB)
@@ -47,13 +47,18 @@ export default function JobsView({ jobs, candidates, persistJobs }) {
               <h2 style={{ fontSize:18, fontWeight:600 }}>{job.title}</h2>
               <p style={{ fontSize:13, color:'#78716c', marginTop:2 }}>{job.dept} · {job.location}</p>
             </div>
-            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
               <span style={{ fontSize:11, padding:'2px 9px', borderRadius:100, background: job.isOpen ? '#EAF3DE' : '#F1EFE8', color: job.isOpen ? '#173404' : '#555' }}>
                 {job.isOpen ? 'Offen' : 'Geschlossen'}
               </span>
               <button onClick={() => toggleOpen(job.id)} style={btnSm}>
                 {job.isOpen ? 'Schließen' : 'Öffnen'}
               </button>
+              {!job.isOpen && onArchive && (
+                <button onClick={() => { if (window.confirm(`„${job.title}" mit allen Bewerbern und Gesprächen archivieren?`)) { onArchive(job.id); setSelected(null) } }} style={{ ...btnSm, color:'#8B5500', borderColor:'#e8d5b0', background:'#FDF6E3' }}>
+                  📦 Archivieren
+                </button>
+              )}
             </div>
           </div>
           <p style={{ fontSize:13, color:'#555', lineHeight:1.7, marginBottom:12 }}>{job.desc}</p>
