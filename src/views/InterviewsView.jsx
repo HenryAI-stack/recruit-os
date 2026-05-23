@@ -1,75 +1,165 @@
 // src/views/InterviewsView.jsx
+import { useState } from 'react'
 import Badge from '../components/Badge.jsx'
+import Icon  from '../components/Icon.jsx'
 
-const AVATAR_COLORS = [
-  ['#B5D4F4','#0C447C'], ['#C0DD97','#173404'],
-  ['#FAC775','#412402'], ['#CECBF6','#26215C'], ['#F4C0D1','#4B1528'],
-]
-function Avatar({ name, size = 36 }) {
-  const initials = name.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0,2)
-  const [bg, color] = AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
-  return <div style={{ width:size, height:size, borderRadius:'50%', background:bg, color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:size*0.35, fontWeight:600, flexShrink:0 }}>{initials}</div>
+const AV_COLORS = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
+
+function Avatar({ name, photo, size=36 }) {
+  if (photo) return <img src={photo} alt="" style={{ width:size,height:size,borderRadius:'50%',objectFit:'cover',flexShrink:0 }} />
+  const ini = name.split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2)
+  const [bg,color] = AV_COLORS[name.charCodeAt(0)%AV_COLORS.length]
+  return <div style={{ width:size,height:size,borderRadius:'50%',background:bg,color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.34,fontWeight:700,flexShrink:0 }}>{ini}</div>
 }
 
-export default function InterviewsView({ jobs, candidates, interviews }) {
-  const planned   = interviews.filter(i => !i.done)
-  const completed = interviews.filter(i =>  i.done)
+function Field({ label, value, onChange, placeholder, multiline, select, type }) {
+  return (
+    <div className="field">
+      <label>{label}</label>
+      {select
+        ? <select value={value} onChange={e=>onChange(e.target.value)}>
+            {select.map(o=>typeof o==='string'?<option key={o} value={o}>{o}</option>:<option key={o.v} value={o.v}>{o.l}</option>)}
+          </select>
+        : multiline
+          ? <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} />
+          : <input type={type||'text'} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} />
+      }
+    </div>
+  )
+}
+
+export default function InterviewsView({ jobs, candidates, interviews, persistInterviews }) {
+  const [editingId, setEditingId] = useState(null)
+  const [editForm,  setEditForm]  = useState({})
+  const [saving,    setSaving]    = useState(false)
+
+  const planned   = interviews.filter(i=>!i.done)
+  const completed = interviews.filter(i=> i.done)
+  const F = (k,v) => setEditForm(f=>({...f,[k]:v}))
+
+  function startEdit(iv) {
+    setEditForm({ type:iv.type, scheduledAt:iv.scheduledAt||'', interviewer:iv.interviewer||'', done:iv.done, feedback:iv.feedback||'', rating:iv.rating||0 })
+    setEditingId(iv.id)
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    await persistInterviews(interviews.map(i => i.id===editingId ? { ...i, ...editForm } : i))
+    setEditingId(null); setSaving(false)
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm('Gespräch löschen?')) return
+    await persistInterviews(interviews.filter(i=>i.id!==id))
+  }
 
   function IvCard({ iv }) {
-    const c = candidates.find(x => x.id === iv.candidateId)
-    const j = jobs.find(x => x.id === iv.jobId)
+    const c = candidates.find(x=>x.id===iv.candidateId)
+    const j = jobs.find(x=>x.id===iv.jobId)
     if (!c) return null
     const name = `${c.firstName} ${c.lastName}`
+    const isEditing = editingId===iv.id
+
     return (
-      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e5e5e3', borderRadius:10, marginBottom:8 }}>
-        <Avatar name={name} />
-        <div style={{ flex:1 }}>
-          <p style={{ fontSize:13, fontWeight:600 }}>{name} <span style={{ fontWeight:400, color:'#78716c' }}>— {iv.type}</span></p>
-          <p style={{ fontSize:12, color:'#78716c', marginTop:2 }}>
-            {j?.title ?? '–'} · 📅 {iv.scheduledAt?.replace('T',' ').slice(0,16)} · 👤 {iv.interviewer}
-          </p>
-          {iv.done && iv.feedback && <p style={{ fontSize:12, color:'#555', marginTop:6, padding:'6px 8px', background:'#f5f5f4', borderRadius:6, lineHeight:1.5 }}>{iv.feedback}</p>}
-          {iv.done && iv.rating > 0 && <p style={{ color:'#BA7517', fontSize:12, marginTop:4 }}>{'★'.repeat(iv.rating)}{'☆'.repeat(5-iv.rating)}</p>}
+      <div style={{ background:'#fff', border:'1px solid #EBEBEA', borderRadius:12, marginBottom:10, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
+        {/* Header row */}
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px' }}>
+          <Avatar name={name} photo={c.photo} size={36} />
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <span style={{ fontSize:13, fontWeight:700 }}>{name}</span>
+              <span style={{ fontSize:12, color:'#888' }}>— {iv.type}</span>
+            </div>
+            <div style={{ display:'flex', gap:12, fontSize:11, color:'#aaa', marginTop:3 }}>
+              {j && <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="briefcase" size={11} color="#ccc" />{j.title}</span>}
+              <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="calendar"  size={11} color="#ccc" />{iv.scheduledAt?.replace('T',' ').slice(0,16)||'–'}</span>
+              <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="users"    size={11} color="#ccc" />{iv.interviewer||'–'}</span>
+            </div>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <Badge status={c.status} />
+            <span style={{ fontSize:11, padding:'2px 8px', borderRadius:100, fontWeight:600,
+              background: iv.done?'#ECFDF5':'#EBF4FF', color: iv.done?'#065F46':'#1A56DB' }}>
+              {iv.done?'✓ Abgeschlossen':'⏱ Geplant'}
+            </span>
+            <button className="btn btn-ghost btn-icon" title="Bearbeiten" onClick={() => isEditing ? setEditingId(null) : startEdit(iv)}>
+              <Icon name={isEditing?'x':'edit'} size={14} color="#aaa" />
+            </button>
+            <button className="btn btn-ghost btn-icon" title="Löschen" onClick={() => handleDelete(iv.id)}>
+              <Icon name="trash" size={14} color="#f87171" />
+            </button>
+          </div>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
-          <span style={{ fontSize:11, padding:'2px 9px', borderRadius:100, background: iv.done ? '#EAF3DE' : '#E6F1FB', color: iv.done ? '#173404' : '#0C447C', whiteSpace:'nowrap' }}>
-            {iv.done ? '✓ Abgeschlossen' : '⏱ Geplant'}
-          </span>
-          <Badge status={c.status} />
-        </div>
+
+        {/* Feedback preview (collapsed) */}
+        {!isEditing && iv.feedback && (
+          <div style={{ padding:'0 16px 12px', borderTop:'1px solid #F3F3F1' }}>
+            <p style={{ fontSize:12,color:'#555',padding:'8px 10px',background:'#F7F7F5',borderRadius:8,lineHeight:1.65,marginTop:10 }}>{iv.feedback}</p>
+            {iv.rating>0 && <p style={{ color:'#F59E0B',fontSize:12,marginTop:5 }}>{'★'.repeat(iv.rating)}{'☆'.repeat(5-iv.rating)}</p>}
+          </div>
+        )}
+
+        {/* Inline edit form */}
+        {isEditing && (
+          <div style={{ padding:'14px 16px', borderTop:'1px solid #EBEBEA', background:'#FAFAF9' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <Field label="Gesprächsart"    value={editForm.type}         onChange={v=>F('type',v)}         select={['Erstgespräch','Technisches Gespräch','Fachgespräch','HR-Interview','Finalgespräch']} />
+              <Field label="Datum & Uhrzeit" value={editForm.scheduledAt}  onChange={v=>F('scheduledAt',v)}  type="datetime-local" />
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <Field label="Interviewer" value={editForm.interviewer} onChange={v=>F('interviewer',v)} placeholder="Name" />
+              <Field label="Status"      value={editForm.done?'1':'0'} onChange={v=>F('done',v==='1')} select={[{v:'0',l:'Geplant'},{v:'1',l:'Abgeschlossen'}]} />
+            </div>
+            <Field label="Feedback & Notizen" value={editForm.feedback} onChange={v=>F('feedback',v)} placeholder="Gesprächsnotizen..." multiline />
+            <Field label="Bewertung" value={String(editForm.rating)} onChange={v=>F('rating',Number(v))} select={[{v:'0',l:'Keine'},{v:'1',l:'★ 1/5'},{v:'2',l:'★★ 2/5'},{v:'3',l:'★★★ 3/5'},{v:'4',l:'★★★★ 4/5'},{v:'5',l:'★★★★★ 5/5'}]} />
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
+              <button className="btn btn-sm" onClick={()=>setEditingId(null)}>Abbrechen</button>
+              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+                <Icon name="save" size={13} color="#fff" />{saving?'Speichern…':'Speichern'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
 
   return (
     <div>
-      <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:20, fontWeight:600 }}>Gespräche</h1>
-        <p style={{ fontSize:13, color:'#78716c', marginTop:2 }}>
-          {planned.length} geplant · {completed.length} abgeschlossen
-        </p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Gespräche</h1>
+          <p className="page-sub">{planned.length} geplant · {completed.length} abgeschlossen</p>
+        </div>
       </div>
 
-      {planned.length > 0 && (
-        <>
-          <h2 style={{ fontSize:14, fontWeight:600, marginBottom:12, color:'#0C447C' }}>⏱ Geplante Gespräche</h2>
-          {planned.map(iv => <IvCard key={iv.id} iv={iv} />)}
-          <div style={{ height:24 }} />
-        </>
+      {interviews.length===0 && (
+        <div style={{ textAlign:'center', padding:'70px 0', color:'#ccc' }}>
+          <Icon name="calendar" size={40} color="#ddd" style={{ margin:'0 auto 14px', display:'block' }} />
+          <p style={{ fontSize:14, fontWeight:500, color:'#bbb' }}>Noch keine Gespräche erfasst</p>
+          <p style={{ fontSize:13, marginTop:6 }}>Gespräche werden bei einzelnen Bewerbern angelegt.</p>
+        </div>
       )}
 
-      {completed.length > 0 && (
-        <>
-          <h2 style={{ fontSize:14, fontWeight:600, marginBottom:12, color:'#173404' }}>✓ Abgeschlossene Gespräche</h2>
-          {completed.map(iv => <IvCard key={iv.id} iv={iv} />)}
-        </>
+      {planned.length>0 && (
+        <div style={{ marginBottom:24 }}>
+          <div className="section-header">
+            <span className="section-title" style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <Icon name="clock" size={14} color="#3B82F6" />Geplante Gespräche
+            </span>
+          </div>
+          {planned.map(iv=><IvCard key={iv.id} iv={iv} />)}
+        </div>
       )}
 
-      {interviews.length === 0 && (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#aaa' }}>
-          <p style={{ fontSize:32, marginBottom:12 }}>🗓</p>
-          <p style={{ fontSize:14 }}>Noch keine Gespräche erfasst.</p>
-          <p style={{ fontSize:13, marginTop:6 }}>Gespräche können bei jedem Bewerber unter „Gespräch erfassen" hinzugefügt werden.</p>
+      {completed.length>0 && (
+        <div>
+          <div className="section-header">
+            <span className="section-title" style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <Icon name="check" size={14} color="#10B981" />Abgeschlossene Gespräche
+            </span>
+          </div>
+          {completed.map(iv=><IvCard key={iv.id} iv={iv} />)}
         </div>
       )}
     </div>
