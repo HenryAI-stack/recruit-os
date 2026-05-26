@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Badge        from '../components/Badge.jsx'
 import Icon         from '../components/Icon.jsx'
 import PhotoUpload  from '../components/PhotoUpload.jsx'
+import DateField    from '../components/DateField.jsx'
 import { useT }     from '../lib/i18n.jsx'
 
 const STATUSES   = ['Eingegangen','Erstgespräch','Technisches Gespräch','Ausgewählt','Abgelehnt']
@@ -158,7 +159,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         <Field label={tca.phone} value={form.phone} onChange={v=>F('phone',v)} placeholder="+43 ..." />
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        <Field label={tca.appliedAt} value={form.appliedAt} onChange={v=>F('appliedAt',v)} type="date" />
+        <DateField label={tca.appliedAt} value={form.appliedAt} onChange={v=>F('appliedAt',v)} />
         <Field label={tca.job}       value={form.jobId}     onChange={v=>F('jobId',v)}     select={jobs.map(j=>({v:j.id,l:j.title}))} />
       </div>
       <Field label={tca.status} value={form.status} onChange={v=>F('status',v)} select={STATUSES.map(s=>({v:s,l:STATUS_DISPLAY[s]||s}))} />
