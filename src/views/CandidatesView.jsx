@@ -10,6 +10,24 @@ const EMPTY      = { firstName:'',lastName:'',email:'',phone:'',jobId:'',status:
 const AV_COLORS  = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
 const IV_EMPTY   = { type:'Erstgespräch',scheduledAt:'',interviewer:'',done:false,feedback:'',rating:0 }
 
+// Auto-status logic: interview type → candidate status (both DE + EN keys)
+const STATUS_RANK = { 'Eingegangen':0,'Erstgespräch':1,'Technisches Gespräch':2,'Ausgewählt':99,'Abgelehnt':99 }
+const IV_TO_STATUS = {
+  'Erstgespräch':'Erstgespräch', 'First Interview':'Erstgespräch',
+  'Technisches Gespräch':'Technisches Gespräch', 'Technical Interview':'Technisches Gespräch',
+  'Fachgespräch':'Technisches Gespräch',         'Specialist Interview':'Technisches Gespräch',
+  'HR-Interview':'Technisches Gespräch',          'HR Interview':'Technisches Gespräch',
+  'Finalgespräch':'Technisches Gespräch',         'Final Interview':'Technisches Gespräch',
+}
+// Returns new status only if it's an upgrade; never overrides Ausgewählt / Abgelehnt
+function deriveStatus(ivType, currentStatus) {
+  const target = IV_TO_STATUS[ivType]
+  if (!target) return null
+  if (currentStatus === 'Ausgewählt' || currentStatus === 'Abgelehnt') return null
+  if ((STATUS_RANK[target] ?? 0) <= (STATUS_RANK[currentStatus] ?? 0)) return null
+  return target
+}
+
 function Avatar({ name, photo, size=34 }) {
   if (photo) return <img src={photo} alt="" style={{ width:size,height:size,borderRadius:'50%',objectFit:'cover',flexShrink:0 }} />
   const ini = name.split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2)
@@ -107,10 +125,20 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
     setShowStPicker(false)
   }
   async function handleSaveIv(data) {
-    const next = editingIvId
-      ? interviews.map(i=>i.id===editingIvId?{...i,...data}:i)
-      : [...interviews,{...data,id:crypto.randomUUID(),candidateId:selected,createdAt:new Date().toISOString()}]
+    const isNew = !editingIvId
+    const next = isNew
+      ? [...interviews,{...data,id:crypto.randomUUID(),candidateId:selected,createdAt:new Date().toISOString()}]
+      : interviews.map(i=>i.id===editingIvId?{...i,...data}:i)
     await persistInterviews(next)
+
+    // Auto-upgrade candidate status when a new interview is registered
+    if (isNew) {
+      const newStatus = deriveStatus(data.type, candidate.status)
+      if (newStatus) {
+        await persistCandidates(candidates.map(c=>c.id===selected?{...c,status:newStatus}:c))
+      }
+    }
+
     setShowIvForm(false); setEditingIvId(null)
   }
   async function handleDeleteIv(id) {
@@ -133,7 +161,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         <Field label={tca.appliedAt} value={form.appliedAt} onChange={v=>F('appliedAt',v)} type="date" />
         <Field label={tca.job}       value={form.jobId}     onChange={v=>F('jobId',v)}     select={jobs.map(j=>({v:j.id,l:j.title}))} />
       </div>
-      <Field label={tca.status} value={form.status} onChange={v=>F('status',v)} select={STATUSES} />
+      <Field label={tca.status} value={form.status} onChange={v=>F('status',v)} select={STATUSES.map(s=>({v:s,l:STATUS_DISPLAY[s]||s}))} />
       <Field label={tca.notes}  value={form.notes}  onChange={v=>F('notes',v)}  placeholder={tca.placeholderNotes} multiline />
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
         <button className="btn btn-sm" onClick={() => { setShowForm(false); setEditCand(false) }}>{tc.cancel}</button>
