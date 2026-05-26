@@ -9,7 +9,7 @@ import { useT }     from '../lib/i18n.jsx'
 const STATUSES   = ['Eingegangen','Erstgespräch','Technisches Gespräch','Ausgewählt','Abgelehnt']
 const EMPTY      = { firstName:'',lastName:'',email:'',phone:'',jobId:'',status:'Eingegangen',notes:'',appliedAt:'' }
 const AV_COLORS  = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
-const IV_EMPTY   = { type:'Erstgespräch',scheduledAt:'',interviewer:'',done:false,feedback:'',rating:0 }
+const ivEmpty = (displayName='') => ({ type:'Erstgespräch', scheduledAt:'', interviewer:displayName, done:false, feedback:'', rating:0 })
 
 // Auto-status logic: interview type → candidate status (both DE + EN keys)
 const STATUS_RANK = { 'Eingegangen':0,'Erstgespräch':1,'Technisches Gespräch':2,'Ausgewählt':99,'Abgelehnt':99 }
@@ -83,7 +83,7 @@ function IvForm({ initial,jobs,candidateId,candidates,onSave,onCancel,t }) {
   )
 }
 
-export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews }) {
+export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user }) {
   const { t, STATUS_DISPLAY } = useT()
   const tc = t.common; const tca = t.candidates; const ti = t.interviews
 
@@ -229,7 +229,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
           )}
         </div>
         {showIvForm && !editingIvId && (
-          <IvForm initial={IV_EMPTY} jobs={jobs} candidateId={selected} candidates={candidates}
+          <IvForm initial={ivEmpty(user?.displayName)} jobs={jobs} candidateId={selected} candidates={candidates}
             onSave={handleSaveIv} onCancel={() => setShowIvForm(false)} t={t} />
         )}
         {civs.length===0 && !showIvForm && (
@@ -241,7 +241,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         {civs.map(iv => (
           <div key={iv.id}>
             {editingIvId===iv.id
-              ? <IvForm initial={editIv||IV_EMPTY} jobs={jobs} candidateId={selected} candidates={candidates}
+              ? <IvForm initial={editIv||ivEmpty(user?.displayName)} jobs={jobs} candidateId={selected} candidates={candidates}
                   onSave={handleSaveIv} onCancel={() => setEditingIvId(null)} t={t} />
               : (
                 <div style={{ display:'flex', gap:12, marginBottom:14, padding:'14px 16px', background:'#fff', border:'1px solid #EBEBEA', borderRadius:12, boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
