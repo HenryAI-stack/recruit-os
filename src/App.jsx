@@ -14,6 +14,7 @@ import Sidebar        from './components/Sidebar.jsx'
 export default function App() {
   const [user,        setUser]        = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [authError,   setAuthError]   = useState(null)
   const [view,        setView]        = useState('dashboard')
   const [loading,     setLoading]     = useState(false)
 
@@ -21,6 +22,17 @@ export default function App() {
   const [candidates, setCandidates] = useState([])
   const [interviews, setInterviews] = useState([])
   const [archives,   setArchives]   = useState([])
+
+  async function handleLogin() {
+    try {
+      setAuthError(null)
+      await loginWithGoogle()
+    } catch (e) {
+      if (e.message === 'ACCESS_DENIED') {
+        setAuthError('access_denied')
+      }
+    }
+  }
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -95,7 +107,7 @@ export default function App() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   if (authLoading) return <Centered>Laden…</Centered>
-  if (!user)       return <LoginPage onLogin={loginWithGoogle} />
+  if (!user)       return <LoginPage onLogin={handleLogin} authError={authError} />
   if (loading)     return <Centered>Daten werden entschlüsselt…</Centered>
 
   const shared = { jobs, candidates, interviews, persistJobs, persistCandidates, persistInterviews }
