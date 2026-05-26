@@ -2,7 +2,7 @@
 import { useT } from '../lib/i18n.jsx'
 import Icon     from '../components/Icon.jsx'
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage({ onLogin, authError }) {
   const { t, lang, setLang } = useT()
   const tl = t.login
 
@@ -28,10 +28,19 @@ export default function LoginPage({ onLogin }) {
           <Icon name="target" size={22} color="#fff" />
         </div>
         <h1 style={{ fontSize:22, fontWeight:700, marginBottom:6, letterSpacing:'-.4px' }}>{tl.title}</h1>
-        <p style={{ fontSize:13, color:'#999', marginBottom:28, lineHeight:1.6 }}>
+        <p style={{ fontSize:13, color:'#999', marginBottom: authError ? 16 : 28, lineHeight:1.6 }}>
           {tl.subtitle}<br />
           <span style={{ fontSize:11 }}>{tl.encrypted}</span>
         </p>
+
+        {authError === 'access_denied' && (
+          <div style={{ marginBottom:20, padding:'10px 14px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, fontSize:12, color:'#991B1B', textAlign:'left', lineHeight:1.5 }}>
+            <strong>{lang === 'de' ? 'Zugriff verweigert' : 'Access denied'}</strong><br />
+            {lang === 'de'
+              ? 'Dieses Konto ist nicht berechtigt, sich anzumelden.'
+              : 'This account is not authorised to sign in.'}
+          </div>
+        )}
         <button onClick={onLogin} style={{
           width:'100%', padding:'10px 16px', border:'1px solid #EBEBEA', borderRadius:10,
           background:'#fff', cursor:'pointer', display:'flex', alignItems:'center',
