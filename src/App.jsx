@@ -118,7 +118,7 @@ export default function App() {
       <main style={{ flex:1, overflowY:'auto', padding:'28px 32px', background:'#f5f5f4' }}>
         {view === 'dashboard'  && <Dashboard     {...shared} onNavigate={setView} />}
         {view === 'jobs'       && <JobsView       {...shared} onArchive={handleArchive} />}
-        {view === 'candidates' && <CandidatesView {...shared} />}
+        {view === 'candidates' && <CandidatesView {...shared} user={user} />}
         {view === 'interviews' && <InterviewsView {...shared} />}
         {view === 'archive'    && <ArchiveView    archives={archives} persistArchives={persistArchives} onRestore={handleRestore} />}
       </main>
