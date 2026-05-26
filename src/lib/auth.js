@@ -1,14 +1,6 @@
 // src/lib/auth.js
-// Google SSO via Firebase Authentication (free tier, identity only – no Firebase DB used).
-
-import { initializeApp } from 'firebase/app'
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-} from 'firebase/auth'
+import { initializeApp }          from 'firebase/app'
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey:     import.meta.env.VITE_FIREBASE_API_KEY,
@@ -20,8 +12,16 @@ const app      = initializeApp(firebaseConfig)
 export const auth     = getAuth(app)
 const provider = new GoogleAuthProvider()
 
+// Only this email is allowed to access the system
+export const ALLOWED_EMAIL = import.meta.env.VITE_ALLOWED_EMAIL
+
 export async function loginWithGoogle() {
   const result = await signInWithPopup(auth, provider)
+  // Immediately sign out if the email is not on the whitelist
+  if (result.user.email !== ALLOWED_EMAIL) {
+    await signOut(auth)
+    throw new Error('ACCESS_DENIED')
+  }
   return result.user
 }
 
@@ -29,10 +29,6 @@ export async function logout() {
   await signOut(auth)
 }
 
-/**
- * Subscribe to auth state changes.
- * @param {(user: import('firebase/auth').User | null) => void} callback
- */
 export function onAuth(callback) {
   return onAuthStateChanged(auth, callback)
 }
