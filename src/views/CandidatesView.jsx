@@ -159,22 +159,34 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
 }
 
 export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user }) {
-  const { t, STATUS_DISPLAY } = useT()
+  const { t, STATUS_DISPLAY, lang } = useT()
   const tc = t.common; const tca = t.candidates; const ti = t.interviews
 
-  const [filter,      setFilter]      = useState('all')
-  const [selected,    setSelected]    = useState(null)
-  const [showForm,    setShowForm]    = useState(false)
-  const [editCand,    setEditCand]    = useState(false)
-  const [form,        setForm]        = useState(EMPTY)
-  const [saving,      setSaving]      = useState(false)
-  const [showStPicker,setShowStPicker]= useState(false)
-  const [showIvForm,  setShowIvForm]  = useState(false)
-  const [editingIvId, setEditingIvId] = useState(null)
+  const [filter,         setFilter]         = useState('all')
+  const [selected,       setSelected]       = useState(null)
+  const [showForm,       setShowForm]       = useState(false)
+  const [editCand,       setEditCand]       = useState(false)
+  const [form,           setForm]           = useState(EMPTY)
+  const [saving,         setSaving]         = useState(false)
+  const [showStPicker,   setShowStPicker]   = useState(false)
+  const [showIvForm,     setShowIvForm]     = useState(false)
+  const [editingIvId,    setEditingIvId]    = useState(null)
+  const [notesImproving, setNotesImproving] = useState(false)
+  const [notesAiApplied, setNotesAiApplied] = useState(false)
 
   const candidate = candidates.find(c=>c.id===selected)
   const filtered  = filter==='all' ? candidates : candidates.filter(c=>c.status===filter)
-  const F = (k,v) => setForm(f=>({...f,[k]:v}))
+  const F = (k,v) => { setForm(f=>({...f,[k]:v})); if(k==='notes') setNotesAiApplied(false) }
+
+  async function handleNotesBlur() {
+    if (!form.notes || form.notes.trim().length < 15 || notesImproving) return
+    setNotesImproving(true)
+    try {
+      const improved = await improveText(form.notes, lang)
+      if (improved) { setForm(f=>({...f, notes: improved})); setNotesAiApplied(true) }
+    } catch(e) { console.error('OpenRouter notes error:', e) }
+    finally { setNotesImproving(false) }
+  }
 
   async function handleSave() {
     if (!form.firstName.trim()||!form.lastName.trim()) return
@@ -239,10 +251,35 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <DateField label={tca.appliedAt} value={form.appliedAt} onChange={v=>F('appliedAt',v)} />
-        <Field label={tca.job}   value={form.jobId}  onChange={v=>F('jobId',v)}  select={jobs.map(j=>({v:j.id,l:j.title}))} />
+        <Field label={tca.job}   value={form.jobId}  onChange={v=>F('jobId',v)}  select={jobs.map(j=>({v:j.id,l:j.location?`${j.title} (${j.location})`:j.title}))} />
       </div>
       <Field label={tca.status} value={form.status} onChange={v=>F('status',v)} select={STATUSES.map(s=>({v:s,l:STATUS_DISPLAY[s]||s}))} />
-      <Field label={tca.notes}  value={form.notes}  onChange={v=>F('notes',v)}  placeholder={tca.placeholderNotes} multiline />
+
+      {/* Notes with AI improvement on blur */}
+      <div className="field">
+        <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <span>{tca.notes}</span>
+          {notesImproving && (
+            <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'#7C3AED', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+              <span style={{ width:8, height:8, borderRadius:'50%', background:'#7C3AED', display:'inline-block', animation:'pulse 1s ease-in-out infinite' }} />
+              {lang==='de' ? 'KI verbessert…' : 'AI improving…'}
+            </span>
+          )}
+          {notesAiApplied && !notesImproving && (
+            <span style={{ fontSize:10, color:'#10B981', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+              ✦ {lang==='de' ? 'KI verbessert' : 'AI improved'}
+            </span>
+          )}
+        </label>
+        <textarea
+          value={form.notes}
+          onChange={e => F('notes', e.target.value)}
+          onBlur={handleNotesBlur}
+          placeholder={lang==='de' ? 'Erste Eindrücke… (KI verbessert beim Verlassen)' : 'First impressions… (AI improves on exit)'}
+          disabled={notesImproving}
+          style={{ opacity: notesImproving ? 0.6 : 1, transition:'opacity .2s' }}
+        />
+      </div>
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
         <button className="btn btn-sm" onClick={() => { setShowForm(false); setEditCand(false) }}>{tc.cancel}</button>
         <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
