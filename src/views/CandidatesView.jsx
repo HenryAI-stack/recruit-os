@@ -4,11 +4,12 @@ import Badge        from '../components/Badge.jsx'
 import Icon         from '../components/Icon.jsx'
 import PhotoUpload  from '../components/PhotoUpload.jsx'
 import DateField    from '../components/DateField.jsx'
+import ResumeUpload from '../components/ResumeUpload.jsx'
 import { useT }     from '../lib/i18n.jsx'
 import { improveText } from '../lib/ai.js'
 
 const STATUSES   = ['Eingegangen','Erstgespräch','Technisches Gespräch','Ausgewählt','Abgelehnt']
-const EMPTY      = { firstName:'',lastName:'',email:'',phone:'',jobId:'',status:'Eingegangen',notes:'',appliedAt:'' }
+const EMPTY = { firstName:'',lastName:'',email:'',phone:'',jobId:'',status:'Eingegangen',notes:'',appliedAt:'',hasResume:false,resumeName:null }
 const AV_COLORS  = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
 const ivEmpty = (displayName='') => ({ type:'Erstgespräch', scheduledAt:'', interviewer:displayName, done:false, feedback:'', rating:0 })
 
@@ -161,6 +162,18 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
     finally { setNotesImproving(false) }
   }
 
+  // ── Resume handlers ───────────────────────────────────────────────────────
+  async function handleResumeChange(hasResume, resumeName) {
+    const next = candidates.map(c => c.id===selected ? { ...c, hasResume, resumeName } : c)
+    await persistCandidates(next)
+  }
+
+  async function handleResumeExtract(summary) {
+    // Populate notes field with AI-extracted resume summary
+    const next = candidates.map(c => c.id===selected ? { ...c, notes: summary } : c)
+    await persistCandidates(next)
+  }
+
   async function handleSave() {
     if (!form.firstName.trim()||!form.lastName.trim()) return
     setSaving(true)
@@ -307,6 +320,18 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Resume upload panel */}
+        {!editCand && (
+          <div style={{ marginBottom:16 }}>
+            <ResumeUpload
+              candidateId={selected}
+              hasResume={!!candidate.hasResume}
+              onResumeChange={handleResumeChange}
+              onNotesExtracted={handleResumeExtract}
+            />
           </div>
         )}
 
