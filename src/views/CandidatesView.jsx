@@ -68,7 +68,7 @@ async function improveText(text, lang) {
       'X-Title': 'RecruitOS',
     },
     body: JSON.stringify({
-      model: 'openai/gpt-4o-mini',
+      model: 'meta-llama/llama-3.1-8b-instruct:free',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user',   content: text },
