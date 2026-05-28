@@ -1,5 +1,5 @@
 // src/views/CandidatesView.jsx
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Badge        from '../components/Badge.jsx'
 import Icon         from '../components/Icon.jsx'
 import PhotoUpload  from '../components/PhotoUpload.jsx'
@@ -147,19 +147,27 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   const [editingIvId,    setEditingIvId]    = useState(null)
   const [notesImproving, setNotesImproving] = useState(false)
   const [notesAiApplied, setNotesAiApplied] = useState(false)
+  const [notesError,     setNotesError]     = useState(null)
+  const notesRef = useRef('')   // always holds the latest notes value, avoids stale closure
 
   const candidate = candidates.find(c=>c.id===selected)
   const filtered  = filter==='all' ? candidates : candidates.filter(c=>c.status===filter)
-  const F = (k,v) => { setForm(f=>({...f,[k]:v})); if(k==='notes') setNotesAiApplied(false) }
+  const F = (k,v) => {
+    setForm(f=>({...f,[k]:v}))
+    if (k==='notes') { notesRef.current = v; setNotesAiApplied(false); setNotesError(null) }
+  }
 
-  async function handleNotesBlur() {
-    if (!form.notes || form.notes.trim().length < 15 || notesImproving) return
-    setNotesImproving(true)
+  async function triggerNotesImprove() {
+    const text = notesRef.current
+    if (!text || text.trim().length < 15 || notesImproving) return
+    setNotesImproving(true); setNotesError(null)
     try {
-      const improved = await improveText(form.notes, lang)
-      if (improved) { setForm(f=>({...f, notes: improved})); setNotesAiApplied(true) }
-    } catch(e) { console.error('OpenRouter notes error:', e) }
-    finally { setNotesImproving(false) }
+      const improved = await improveText(text, lang)
+      if (improved) { setForm(f=>({...f, notes: improved})); notesRef.current = improved; setNotesAiApplied(true) }
+    } catch(e) {
+      console.error('OpenRouter notes error:', e)
+      setNotesError(lang==='de' ? `KI-Fehler: ${e.message}` : `AI error: ${e.message}`)
+    } finally { setNotesImproving(false) }
   }
 
   // ── Resume handlers ───────────────────────────────────────────────────────
@@ -185,9 +193,12 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   }
 
   function startEdit() {
-    setForm({firstName:candidate.firstName,lastName:candidate.lastName,email:candidate.email,
-             phone:candidate.phone,jobId:candidate.jobId,status:candidate.status,
-             notes:candidate.notes||'',appliedAt:candidate.appliedAt||''})
+    const notes = candidate.notes||''
+    setForm({ firstName:candidate.firstName, lastName:candidate.lastName, email:candidate.email,
+              phone:candidate.phone, jobId:candidate.jobId, status:candidate.status,
+              notes, appliedAt:candidate.appliedAt||'' })
+    notesRef.current = notes
+    setNotesAiApplied(false); setNotesError(null)
     setEditCand(true); setShowForm(true)
   }
 
@@ -241,30 +252,39 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
       </div>
       <Field label={tca.status} value={form.status} onChange={v=>F('status',v)} select={STATUSES.map(s=>({v:s,l:STATUS_DISPLAY[s]||s}))} />
 
-      {/* Notes with AI improvement on blur */}
+      {/* Notes with AI improvement */}
       <div className="field">
-        <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:6 }}>
           <span>{tca.notes}</span>
-          {notesImproving && (
-            <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'#7C3AED', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
-              <span style={{ width:8, height:8, borderRadius:'50%', background:'#7C3AED', display:'inline-block', animation:'pulse 1s ease-in-out infinite' }} />
-              {lang==='de' ? 'KI verbessert…' : 'AI improving…'}
-            </span>
-          )}
-          {notesAiApplied && !notesImproving && (
-            <span style={{ fontSize:10, color:'#10B981', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
-              ✦ {lang==='de' ? 'KI verbessert' : 'AI improved'}
-            </span>
-          )}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            {notesImproving && (
+              <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, color:'#7C3AED', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+                <span style={{ width:7, height:7, borderRadius:'50%', background:'#7C3AED', display:'inline-block', animation:'pulse 1s ease-in-out infinite' }} />
+                {lang==='de' ? 'KI verbessert…' : 'AI improving…'}
+              </span>
+            )}
+            {notesAiApplied && !notesImproving && (
+              <span style={{ fontSize:10, color:'#10B981', fontWeight:600 }}>✦ {lang==='de' ? 'KI verbessert' : 'AI improved'}</span>
+            )}
+            <button
+              type="button"
+              onClick={triggerNotesImprove}
+              disabled={notesImproving || !form.notes || form.notes.trim().length < 15}
+              style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, fontSize:10, fontWeight:600, cursor:'pointer', border:'1px solid #C4B5FD', background:'#F0EEFF', color:'#5B21B6', fontFamily:'inherit', opacity: (!form.notes || form.notes.trim().length < 15) ? 0.4 : 1 }}>
+              ✦ {lang==='de' ? 'Verbessern' : 'Improve'}
+            </button>
+          </div>
         </label>
+        <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
         <textarea
           value={form.notes}
           onChange={e => F('notes', e.target.value)}
-          onBlur={handleNotesBlur}
-          placeholder={lang==='de' ? 'Erste Eindrücke… (KI verbessert beim Verlassen)' : 'First impressions… (AI improves on exit)'}
+          onBlur={triggerNotesImprove}
+          placeholder={lang==='de' ? 'Erste Eindrücke… (KI verbessert beim Verlassen oder per Klick)' : 'First impressions… (AI improves on blur or via button)'}
           disabled={notesImproving}
           style={{ opacity: notesImproving ? 0.6 : 1, transition:'opacity .2s' }}
         />
+        {notesError && <p style={{ fontSize:11, color:'#EF4444', marginTop:4 }}>{notesError}</p>}
       </div>
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
         <button className="btn btn-sm" onClick={() => { setShowForm(false); setEditCand(false) }}>{tc.cancel}</button>
