@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import Badge    from '../components/Badge.jsx'
 import Icon     from '../components/Icon.jsx'
 import { useT } from '../lib/i18n.jsx'
+import { improveText } from '../lib/ai.js'
 
 const AV_COLORS = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
 
@@ -44,7 +45,7 @@ function Chip({ label, active, onClick }) {
 }
 
 export default function InterviewsView({ jobs, candidates, interviews, persistInterviews }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const ti = t.interviews; const tc = t.common
 
   // ── Filter / search state ────────────────────────────────────────────────
@@ -54,11 +55,23 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
   const [filterJob,   setFilterJob]   = useState('all')
 
   // ── Edit state ───────────────────────────────────────────────────────────
-  const [editingId, setEditingId] = useState(null)
-  const [editForm,  setEditForm]  = useState({})
-  const [saving,    setSaving]    = useState(false)
+  const [editingId,          setEditingId]          = useState(null)
+  const [editForm,           setEditForm]           = useState({})
+  const [saving,             setSaving]             = useState(false)
+  const [feedbackImproving,  setFeedbackImproving]  = useState(false)
+  const [feedbackAiApplied,  setFeedbackAiApplied]  = useState(false)
 
-  const F = (k,v) => setEditForm(f=>({...f,[k]:v}))
+  const F = (k,v) => { setEditForm(f=>({...f,[k]:v})); if(k==='feedback') setFeedbackAiApplied(false) }
+
+  async function handleFeedbackBlur() {
+    if (!editForm.feedback || editForm.feedback.trim().length < 15 || feedbackImproving) return
+    setFeedbackImproving(true)
+    try {
+      const improved = await improveText(editForm.feedback, lang)
+      if (improved) { setEditForm(f=>({...f, feedback: improved})); setFeedbackAiApplied(true) }
+    } catch(e) { console.error('OpenRouter error:', e) }
+    finally { setFeedbackImproving(false) }
+  }
 
   // ── Derived filter options ───────────────────────────────────────────────
   const allTypes = useMemo(() => [...new Set(interviews.map(i=>i.type).filter(Boolean))], [interviews])
@@ -164,8 +177,33 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
               <Field label={ti.interviewer} value={editForm.interviewer}  onChange={v=>F('interviewer',v)}  placeholder="Name" />
               <Field label={ti.statusLabel} value={editForm.done?'1':'0'} onChange={v=>F('done',v==='1')}   select={[{v:'0',l:ti.statusPlanned},{v:'1',l:ti.statusDone}]} />
             </div>
-            <Field label={ti.feedback} value={editForm.feedback} onChange={v=>F('feedback',v)} multiline />
-            <Field label={ti.rating}   value={String(editForm.rating)} onChange={v=>F('rating',Number(v))} select={ratingOpts} />
+            {/* Feedback with AI improvement */}
+            <div className="field">
+              <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span>{ti.feedback}</span>
+                {feedbackImproving && (
+                  <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'#7C3AED', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:'#7C3AED', display:'inline-block', animation:'pulse 1s ease-in-out infinite' }} />
+                    {lang==='de' ? 'KI verbessert…' : 'AI improving…'}
+                  </span>
+                )}
+                {feedbackAiApplied && !feedbackImproving && (
+                  <span style={{ fontSize:10, color:'#10B981', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+                    ✦ {lang==='de' ? 'KI verbessert' : 'AI improved'}
+                  </span>
+                )}
+              </label>
+              <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+              <textarea
+                value={editForm.feedback}
+                onChange={e => F('feedback', e.target.value)}
+                onBlur={handleFeedbackBlur}
+                placeholder={lang==='de' ? 'Gesprächsnotizen… (KI verbessert beim Verlassen)' : 'Interview notes… (AI improves on exit)'}
+                disabled={feedbackImproving}
+                style={{ opacity: feedbackImproving ? 0.6 : 1, transition:'opacity .2s' }}
+              />
+            </div>
+            <Field label={ti.rating} value={String(editForm.rating)} onChange={v=>F('rating',Number(v))} select={ratingOpts} />
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
               <button className="btn btn-sm" onClick={()=>setEditingId(null)}>{tc.cancel}</button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
