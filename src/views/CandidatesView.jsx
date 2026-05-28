@@ -222,7 +222,11 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
     await persistInterviews(interviews.filter(i=>i.id!==id))
   }
 
-  const CandForm = ({ title }) => (
+  // Defined as a plain function (not a component) to avoid React
+  // treating it as a new component type on every re-render, which
+  // would unmount/remount the form and kill focus on every keystroke.
+  function renderCandForm(title) {
+    return (
     <div className="card" style={{ marginBottom:16 }}>
       <h3 style={{ marginBottom:16 }}>{title}</h3>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -235,7 +239,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <DateField label={tca.appliedAt} value={form.appliedAt} onChange={v=>F('appliedAt',v)} />
-        <Field label={tca.job}       value={form.jobId}     onChange={v=>F('jobId',v)}     select={jobs.map(j=>({v:j.id,l:j.title}))} />
+        <Field label={tca.job}   value={form.jobId}  onChange={v=>F('jobId',v)}  select={jobs.map(j=>({v:j.id,l:j.title}))} />
       </div>
       <Field label={tca.status} value={form.status} onChange={v=>F('status',v)} select={STATUSES.map(s=>({v:s,l:STATUS_DISPLAY[s]||s}))} />
       <Field label={tca.notes}  value={form.notes}  onChange={v=>F('notes',v)}  placeholder={tca.placeholderNotes} multiline />
@@ -246,7 +250,8 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         </button>
       </div>
     </div>
-  )
+    )
+  }
 
   // ── Detail view ──────────────────────────────────────────────────────────
   if (selected && candidate) {
@@ -258,7 +263,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         <button className="btn btn-sm" onClick={() => { setSelected(null); setShowForm(false); setEditCand(false); setShowIvForm(false); setEditingIvId(null) }} style={{ marginBottom:20 }}>
           <Icon name="arrowLeft" size={14} />{tc.back}
         </button>
-        {showForm && editCand && <CandForm title={tca.editTitle} />}
+        {showForm && editCand && renderCandForm(tca.editTitle)}
         {!editCand && (
           <div className="card" style={{ marginBottom:16 }}>
             <div style={{ display:'flex', gap:18, alignItems:'flex-start', flexWrap:'wrap' }}>
@@ -362,7 +367,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
           <Icon name="plus" size={14} color="#fff" />{tca.newCandidate}
         </button>
       </div>
-      {showForm && !editCand && <CandForm title={tca.addTitle} />}
+      {showForm && !editCand && renderCandForm(tca.addTitle)}
 
       {/* Filters */}
       <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginBottom:16 }}>
