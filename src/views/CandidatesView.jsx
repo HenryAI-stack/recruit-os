@@ -52,15 +52,62 @@ function Field({ label,value,onChange,placeholder,multiline,select,type }) {
   )
 }
 
-function IvForm({ initial,jobs,candidateId,candidates,onSave,onCancel,t }) {
-  const [f,setF] = useState(initial)
-  const F = (k,v) => setF(x=>({...x,[k]:v}))
-  const jobId = initial.jobId||candidates.find(c=>c.id===candidateId)?.jobId
-  const ti = t.interviews; const tc = t.common
+const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
+
+async function improveText(text, lang) {
+  if (!text || text.trim().length < 15) return null
+  const systemPrompt = lang === 'de'
+    ? 'Du bist ein HR-Profi. Formuliere die folgenden Gesprächsnotizen in ein klares, strukturiertes und professionelles Interviewfeedback um. Behalte alle Kernaussagen. Gib NUR den verbesserten Text zurück – keine Erklärung, kein Präambel.'
+    : 'You are an HR professional. Rewrite the following interview notes into clear, structured, professional feedback. Keep all key points. Return ONLY the improved text – no explanation, no preamble.'
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENROUTER_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'RecruitOS',
+    },
+    body: JSON.stringify({
+      model: 'openai/gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: text },
+      ],
+    }),
+  })
+  if (!res.ok) throw new Error(`OpenRouter ${res.status}`)
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content?.trim() || null
+}
+
+function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t }) {
+  const { lang } = useT()
+  const [f,          setF]          = useState(initial)
+  const [improving,  setImproving]  = useState(false)
+  const [aiApplied,  setAiApplied]  = useState(false)
+  const F = (k,v) => { setF(x=>({...x,[k]:v})); if(k==='feedback') setAiApplied(false) }
+
+  const jobId  = initial.jobId || candidates.find(c=>c.id===candidateId)?.jobId
+  const ti     = t.interviews
+  const tc     = t.common
   const ratingOpts = [
     {v:'0',l:ti.noRating},{v:'1',l:'★ 1/5'},{v:'2',l:'★★ 2/5'},
-    {v:'3',l:'★★★ 3/5'},{v:'4',l:'★★★★ 4/5'},{v:'5',l:'★★★★★ 5/5'}
+    {v:'3',l:'★★★ 3/5'},{v:'4',l:'★★★★ 4/5'},{v:'5',l:'★★★★★ 5/5'},
   ]
+
+  async function handleFeedbackBlur() {
+    if (!f.feedback || f.feedback.trim().length < 15 || improving) return
+    setImproving(true)
+    try {
+      const improved = await improveText(f.feedback, lang)
+      if (improved) { setF(x=>({...x, feedback: improved})); setAiApplied(true) }
+    } catch(e) {
+      console.error('OpenRouter error:', e)
+    } finally {
+      setImproving(false)
+    }
+  }
+
   return (
     <div className="card" style={{ marginBottom:12, background:'#FAFAF9' }}>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -68,14 +115,42 @@ function IvForm({ initial,jobs,candidateId,candidates,onSave,onCancel,t }) {
         <Field label={ti.dateTime} value={f.scheduledAt} onChange={v=>F('scheduledAt',v)} type="datetime-local" />
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        <Field label={ti.interviewer} value={f.interviewer}    onChange={v=>F('interviewer',v)} placeholder="Name" />
-        <Field label={ti.statusLabel} value={f.done?'1':'0'}   onChange={v=>F('done',v==='1')}  select={[{v:'0',l:ti.statusPlanned},{v:'1',l:ti.statusDone}]} />
+        <Field label={ti.interviewer} value={f.interviewer}  onChange={v=>F('interviewer',v)} placeholder="Name" />
+        <Field label={ti.statusLabel} value={f.done?'1':'0'} onChange={v=>F('done',v==='1')}  select={[{v:'0',l:ti.statusPlanned},{v:'1',l:ti.statusDone}]} />
       </div>
-      <Field label={ti.feedback} value={f.feedback} onChange={v=>F('feedback',v)} placeholder="…" multiline />
-      <Field label={ti.rating}   value={String(f.rating)} onChange={v=>F('rating',Number(v))} select={ratingOpts} />
+
+      {/* Feedback field with AI improvement */}
+      <div className="field">
+        <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <span>{ti.feedback}</span>
+          {improving && (
+            <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'#7C3AED', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+              <span style={{ width:8, height:8, borderRadius:'50%', background:'#7C3AED', display:'inline-block', animation:'pulse 1s ease-in-out infinite' }} />
+              {lang==='de' ? 'KI verbessert…' : 'AI improving…'}
+            </span>
+          )}
+          {aiApplied && !improving && (
+            <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, color:'#10B981', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+              ✦ {lang==='de' ? 'KI verbessert' : 'AI improved'}
+            </span>
+          )}
+        </label>
+        <textarea
+          value={f.feedback}
+          onChange={e => F('feedback', e.target.value)}
+          onBlur={handleFeedbackBlur}
+          placeholder={lang==='de' ? 'Gesprächsnotizen… (KI verbessert beim Verlassen)' : 'Interview notes… (AI improves on exit)'}
+          disabled={improving}
+          style={{ opacity: improving ? 0.6 : 1, transition:'opacity .2s' }}
+        />
+      </div>
+
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+
+      <Field label={ti.rating} value={String(f.rating)} onChange={v=>F('rating',Number(v))} select={ratingOpts} />
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
         <button className="btn btn-sm" onClick={onCancel}>{tc.cancel}</button>
-        <button className="btn btn-primary btn-sm" onClick={() => onSave({...f,jobId})}>
+        <button className="btn btn-primary btn-sm" disabled={improving} onClick={() => onSave({...f, jobId})}>
           <Icon name="save" size={13} color="#fff" />{tc.save}
         </button>
       </div>
