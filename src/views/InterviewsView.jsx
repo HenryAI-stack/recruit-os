@@ -134,7 +134,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
     {v:'3',l:'★★★ 3/5'}, {v:'4',l:'★★★★ 4/5'},{v:'5',l:'★★★★★ 5/5'},
   ]
 
-  function IvCard({ iv }) {
+  function renderIvCard(iv) {
     const c = candidates.find(x=>x.id===iv.candidateId)
     const j = jobs.find(x=>x.id===iv.jobId)
     if (!c) return null
@@ -352,7 +352,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
               <span style={{ fontSize:11, color:'#aaa', fontWeight:400 }}>({planned.length})</span>
             </span>
           </div>
-          {planned.map(iv=><IvCard key={iv.id} iv={iv} />)}
+          {planned.map(iv=><div key={iv.id}>{renderIvCard(iv)}</div>)}
         </div>
       )}
 
@@ -365,7 +365,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
               <span style={{ fontSize:11, color:'#aaa', fontWeight:400 }}>({completed.length})</span>
             </span>
           </div>
-          {completed.map(iv=><IvCard key={iv.id} iv={iv} />)}
+          {completed.map(iv=><div key={iv.id}>{renderIvCard(iv)}</div>)}
         </div>
       )}
     </div>
