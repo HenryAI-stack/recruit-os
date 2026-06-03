@@ -6,10 +6,10 @@ import PhotoUpload  from '../components/PhotoUpload.jsx'
 import DateField    from '../components/DateField.jsx'
 import ResumeUpload from '../components/ResumeUpload.jsx'
 import { useT }     from '../lib/i18n.jsx'
-import { improveText } from '../lib/ai.js'
+import { improveText, generateInterviewQuestions } from '../lib/ai.js'
 
 const STATUSES   = ['Eingegangen','Erstgespräch','Technisches Gespräch','Ausgewählt','Abgelehnt']
-const EMPTY = { firstName:'',lastName:'',email:'',phone:'',jobId:'',status:'Eingegangen',notes:'',appliedAt:'',hasResume:false,resumeName:null }
+const EMPTY = { firstName:'',lastName:'',email:'',phone:'',mobile:'',address:'',birthday:'',jobId:'',status:'Eingegangen',notes:'',appliedAt:'',hasResume:false,resumeName:null }
 const AV_COLORS  = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
 const ivEmpty = (displayName='') => ({ type:'Erstgespräch', scheduledAt:'', interviewer:displayName, done:false, feedback:'', rating:0 })
 
@@ -148,6 +148,9 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   const [notesImproving, setNotesImproving] = useState(false)
   const [notesAiApplied, setNotesAiApplied] = useState(false)
   const [notesError,     setNotesError]     = useState(null)
+  const [questions,      setQuestions]      = useState(null)
+  const [questionsLoading, setQuestionsLoading] = useState(false)
+  const [questionsError,   setQuestionsError]   = useState(null)
   const notesRef = useRef('')   // always holds the latest notes value, avoids stale closure
 
   const candidate = candidates.find(c=>c.id===selected)
@@ -176,10 +179,34 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
     await persistCandidates(next)
   }
 
-  async function handleResumeExtract(summary) {
-    // Populate notes field with AI-extracted resume summary
-    const next = candidates.map(c => c.id===selected ? { ...c, notes: summary } : c)
+  // Called when ResumeUpload extracts structured data from CV
+  async function handleDataExtracted(data) {
+    // Merge extracted fields into candidate record (only overwrite if value present)
+    const merge = {}
+    const fields = ['firstName','lastName','email','phone','mobile','address','birthday','notes']
+    fields.forEach(k => { if (data[k] && data[k].trim()) merge[k] = data[k].trim() })
+    const next = candidates.map(c => c.id===selected ? { ...c, ...merge } : c)
     await persistCandidates(next)
+    // Also update form if currently editing
+    if (showForm && editCand) {
+      setForm(f => ({ ...f, ...merge }))
+      if (merge.notes) { notesRef.current = merge.notes; setNotesAiApplied(false) }
+    }
+  }
+
+  // ── Interview question generation ─────────────────────────────────────────
+  async function handleGenerateQuestions() {
+    const cand = candidates.find(c => c.id===selected)
+    const job  = jobs.find(j => j.id===cand?.jobId)
+    if (!job) return
+    setQuestionsLoading(true); setQuestionsError(null); setQuestions(null)
+    try {
+      const result = await generateInterviewQuestions(job.title, job.desc, cand?.notes, lang)
+      if (result) setQuestions(result)
+      else throw new Error(lang==='de' ? 'Keine Fragen generiert' : 'No questions generated')
+    } catch(e) {
+      setQuestionsError(lang==='de' ? `Fehler: ${e.message}` : `Error: ${e.message}`)
+    } finally { setQuestionsLoading(false) }
   }
 
   async function handleSave() {
@@ -243,9 +270,14 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         <Field label={tca.lastName}  value={form.lastName}  onChange={v=>F('lastName',v)}  placeholder={tca.lastName} />
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        <Field label={tca.email} value={form.email} onChange={v=>F('email',v)} placeholder="email@..." />
-        <Field label={tca.phone} value={form.phone} onChange={v=>F('phone',v)} placeholder="+43 ..." />
+        <Field label={tca.email}  value={form.email}  onChange={v=>F('email',v)}  placeholder="email@..." />
+        <Field label={tca.phone}  value={form.phone}  onChange={v=>F('phone',v)}  placeholder="+43 ..." />
       </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        <Field label={lang==='de'?'Mobil':'Mobile'} value={form.mobile||''} onChange={v=>F('mobile',v)} placeholder="+43 ..." />
+        <DateField label={lang==='de'?'Geburtsdatum':'Birthday'} value={form.birthday||''} onChange={v=>F('birthday',v)} />
+      </div>
+      <Field label={lang==='de'?'Adresse':'Address'} value={form.address||''} onChange={v=>F('address',v)} placeholder={lang==='de'?'Straße, PLZ Ort':'Street, ZIP City'} />
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <DateField label={tca.appliedAt} value={form.appliedAt} onChange={v=>F('appliedAt',v)} />
         <Field label={tca.job}   value={form.jobId}  onChange={v=>F('jobId',v)}  select={jobs.map(j=>({v:j.id,l:j.location?`${j.title} (${j.location})`:j.title}))} />
@@ -318,6 +350,9 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
                 <div style={{ display:'flex', gap:14, flexWrap:'wrap', fontSize:12, color:'#888', marginBottom:candidate.notes?10:0 }}>
                   {candidate.email    && <span style={{ display:'flex',alignItems:'center',gap:4 }}><Icon name="mail"      size={12} color="#ccc" />{candidate.email}</span>}
                   {candidate.phone    && <span style={{ display:'flex',alignItems:'center',gap:4 }}><Icon name="phone"     size={12} color="#ccc" />{candidate.phone}</span>}
+                  {candidate.mobile   && <span style={{ display:'flex',alignItems:'center',gap:4 }}><Icon name="phone"     size={12} color="#ccc" />{candidate.mobile}</span>}
+                  {candidate.address  && <span style={{ display:'flex',alignItems:'center',gap:4 }}><Icon name="target"    size={12} color="#ccc" />{candidate.address}</span>}
+                  {candidate.birthday && <span style={{ display:'flex',alignItems:'center',gap:4 }}><Icon name="calendar"  size={12} color="#ccc" />{candidate.birthday}</span>}
                   {job                && <span style={{ display:'flex',alignItems:'center',gap:4 }}><Icon name="briefcase" size={12} color="#ccc" />{job.title}</span>}
                   {candidate.appliedAt&& <span style={{ display:'flex',alignItems:'center',gap:4 }}><Icon name="calendar"  size={12} color="#ccc" />{tca.appliedOn} {candidate.appliedAt}</span>}
                 </div>
@@ -349,8 +384,53 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
               candidateId={selected}
               hasResume={!!candidate.hasResume}
               onResumeChange={handleResumeChange}
-              onNotesExtracted={handleResumeExtract}
+              onDataExtracted={handleDataExtracted}
             />
+          </div>
+        )}
+
+        {/* Interview preparation — question generator */}
+        {!editCand && (
+          <div style={{ marginBottom:16, background:'#FAFAF9', border:'1px solid #EBEBEA', borderRadius:10, padding:'14px 16px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <Icon name="calendar" size={14} color="#888" />
+                <span style={{ fontSize:12, fontWeight:700, color:'#555', textTransform:'uppercase', letterSpacing:'.05em' }}>
+                  {lang==='de' ? 'Interview-Vorbereitung' : 'Interview Preparation'}
+                </span>
+              </div>
+              <button
+                onClick={handleGenerateQuestions}
+                disabled={questionsLoading || !jobs.find(j=>j.id===candidate.jobId)}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', border:'1px solid #C4B5FD', background:'#F0EEFF', color:'#5B21B6', fontFamily:'inherit', opacity:questionsLoading?0.7:1 }}>
+                {questionsLoading
+                  ? <><span style={{ width:7,height:7,borderRadius:'50%',background:'#7C3AED',display:'inline-block',animation:'pulse 1s ease-in-out infinite' }}/>{lang==='de'?'Generiere…':'Generating…'}</>
+                  : <><Icon name="star" size={13} color="#7C3AED"/>{lang==='de'?'Fragen generieren':'Generate Questions'}</>}
+              </button>
+            </div>
+
+            {questionsError && <p style={{ marginTop:8, fontSize:11, color:'#EF4444' }}>{questionsError}</p>}
+
+            {questions && (
+              <div style={{ marginTop:12 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                  <span style={{ fontSize:11, color:'#888' }}>
+                    {lang==='de' ? `Für: ${jobs.find(j=>j.id===candidate.jobId)?.title}` : `For: ${jobs.find(j=>j.id===candidate.jobId)?.title}`}
+                  </span>
+                  <button onClick={() => navigator.clipboard?.writeText(questions)} style={{ fontSize:11, color:'#1A56DB', background:'none', border:'none', cursor:'pointer', padding:'2px 6px' }}>
+                    {lang==='de' ? '📋 Kopieren' : '📋 Copy all'}
+                  </button>
+                </div>
+                <div style={{ background:'#fff', border:'1px solid #EBEBEA', borderRadius:8, padding:'12px 14px' }}>
+                  {questions.split('\n').filter(l=>l.trim()).map((line, i) => (
+                    <p key={i} style={{ fontSize:13, color:'#1A1A1A', lineHeight:1.7, marginBottom: i < questions.split('\n').filter(l=>l.trim()).length-1 ? 8 : 0 }}>{line}</p>
+                  ))}
+                </div>
+                <button onClick={() => setQuestions(null)} style={{ marginTop:6, fontSize:11, color:'#aaa', background:'none', border:'none', cursor:'pointer' }}>
+                  {lang==='de' ? 'Verbergen' : 'Hide'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
