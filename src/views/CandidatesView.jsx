@@ -6,7 +6,8 @@ import PhotoUpload  from '../components/PhotoUpload.jsx'
 import DateField    from '../components/DateField.jsx'
 import ResumeUpload from '../components/ResumeUpload.jsx'
 import { useT }     from '../lib/i18n.jsx'
-import { improveText, generateInterviewQuestions } from '../lib/ai.js'
+import { improveText, generateInterviewQuestions, extractCandidateInfo } from '../lib/ai.js'
+import { saveResume, extractText } from '../lib/resume.js'
 
 const STATUSES   = ['Eingegangen','Erstgespräch','Technisches Gespräch','Ausgewählt','Abgelehnt']
 const EMPTY = { firstName:'',lastName:'',email:'',phone:'',mobile:'',address:'',birthday:'',jobId:'',status:'Eingegangen',notes:'',appliedAt:'',hasResume:false,resumeName:null }
@@ -151,7 +152,11 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   const [questions,      setQuestions]      = useState(null)
   const [questionsLoading, setQuestionsLoading] = useState(false)
   const [questionsError,   setQuestionsError]   = useState(null)
-  const notesRef = useRef('')   // always holds the latest notes value, avoids stale closure
+  const [pendingResume,  setPendingResume]  = useState(null)  // { file, name } for new candidates
+  const [cvExtracting,   setCvExtracting]   = useState(false)
+  const [cvError,        setCvError]        = useState(null)
+  const notesRef = useRef('')
+  const cvInputRef = useRef()   // always holds the latest notes value, avoids stale closure
 
   const candidate = candidates.find(c=>c.id===selected)
   const filtered  = filter==='all' ? candidates : candidates.filter(c=>c.status===filter)
@@ -212,11 +217,23 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   async function handleSave() {
     if (!form.firstName.trim()||!form.lastName.trim()) return
     setSaving(true)
+    const newId = editCand ? selected : crypto.randomUUID()
     const next = editCand
       ? candidates.map(c=>c.id===selected?{...c,...form}:c)
-      : [...candidates,{...form,id:crypto.randomUUID(),photo:null,createdAt:new Date().toISOString().split('T')[0]}]
+      : [...candidates,{ ...form, id:newId, photo:null,
+          hasResume: !!pendingResume,
+          resumeName: pendingResume?.name || null,
+          createdAt:new Date().toISOString().split('T')[0] }]
     await persistCandidates(next)
-    setShowForm(false); setEditCand(false); setForm(EMPTY); setSaving(false)
+    // Save pending resume for new candidates
+    if (!editCand && pendingResume) {
+      try {
+        const buf = await pendingResume.file.arrayBuffer()
+        await saveResume(newId, buf, pendingResume.name)
+      } catch(e) { console.error('Resume save error:', e) }
+    }
+    setShowForm(false); setEditCand(false); setForm(EMPTY)
+    setPendingResume(null); setCvError(null); setSaving(false)
   }
 
   function startEdit() {
@@ -262,9 +279,63 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   // treating it as a new component type on every re-render, which
   // would unmount/remount the form and kill focus on every keystroke.
   function renderCandForm(title) {
+    async function handleCvFile(e) {
+      const file = e.target.files?.[0]
+      if (!file) return
+      const ext = file.name.split('.').pop().toLowerCase()
+      if (!['pdf','docx'].includes(ext)) { setCvError(lang==='de'?'Nur PDF oder DOCX.':'Only PDF or DOCX.'); return }
+      setPendingResume({ file, name: file.name }); setCvError(null)
+    }
+
+    async function handleCvExtract() {
+      if (!pendingResume) return
+      setCvExtracting(true); setCvError(null)
+      try {
+        const text = await extractText(pendingResume.file)
+        if (!text || text.trim().length < 50) throw new Error(lang==='de'?'Text konnte nicht gelesen werden':'Could not read text from file')
+        const data = await extractCandidateInfo(text, lang)
+        if (!data) throw new Error(lang==='de'?'KI konnte keine Daten extrahieren':'AI could not extract data')
+        const fields = ['firstName','lastName','email','phone','mobile','address','birthday','notes']
+        fields.forEach(k => { if (data[k]?.trim()) { setForm(f=>({...f,[k]:data[k].trim()})); if(k==='notes') notesRef.current=data[k].trim() } })
+      } catch(e) { setCvError(`${lang==='de'?'Fehler':'Error'}: ${e.message}`) }
+      finally { setCvExtracting(false) }
+    }
+
     return (
     <div className="card" style={{ marginBottom:16 }}>
       <h3 style={{ marginBottom:16 }}>{title}</h3>
+
+      {/* CV upload & extract — before filling the form manually */}
+      <div style={{ marginBottom:16, padding:'12px 14px', background:'#FAFAF9', border:'1px solid #EBEBEA', borderRadius:9 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+          <Icon name="upload" size={13} color="#888" />
+          <span style={{ fontSize:11, fontWeight:700, color:'#555', textTransform:'uppercase', letterSpacing:'.05em' }}>
+            {lang==='de' ? 'Lebenslauf importieren (optional)' : 'Import Resume (optional)'}
+          </span>
+        </div>
+        <div style={{ display:'flex', gap:7, flexWrap:'wrap', alignItems:'center' }}>
+          <button type="button" className="btn btn-sm" onClick={() => cvInputRef.current?.click()}>
+            <Icon name="upload" size={12} color="#555" />
+            {pendingResume ? pendingResume.name : (lang==='de'?'PDF / DOCX wählen':'Choose PDF / DOCX')}
+          </button>
+          <input ref={cvInputRef} type="file" accept=".pdf,.docx" style={{ display:'none' }} onChange={handleCvFile} />
+          {pendingResume && (
+            <button type="button" onClick={handleCvExtract} disabled={cvExtracting}
+              style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', border:'1px solid #C4B5FD', background:'#F0EEFF', color:'#5B21B6', fontFamily:'inherit' }}>
+              {cvExtracting
+                ? <><span style={{ width:7,height:7,borderRadius:'50%',background:'#7C3AED',display:'inline-block',animation:'pulse 1s ease-in-out infinite' }}/>{lang==='de'?'Extrahiere…':'Extracting…'}</>
+                : <><Icon name="star" size={12} color="#7C3AED"/>{lang==='de'?'Felder befüllen':'Fill Fields'}</>}
+            </button>
+          )}
+          {pendingResume && (
+            <button type="button" className="btn btn-sm" style={{ color:'#aaa', border:'none' }} onClick={() => { setPendingResume(null); setCvError(null) }}>
+              <Icon name="x" size={12} color="#aaa" />
+            </button>
+          )}
+        </div>
+        {cvError && <p style={{ fontSize:11, color:'#EF4444', marginTop:6 }}>{cvError}</p>}
+        <p style={{ fontSize:10, color:'#bbb', marginTop:6 }}>{lang==='de'?'Das Dokument wird nach dem Speichern verschlüsselt hinterlegt.':'The file will be stored encrypted after saving.'}</p>
+      </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <Field label={tca.firstName} value={form.firstName} onChange={v=>F('firstName',v)} placeholder={tca.firstName} />
         <Field label={tca.lastName}  value={form.lastName}  onChange={v=>F('lastName',v)}  placeholder={tca.lastName} />
