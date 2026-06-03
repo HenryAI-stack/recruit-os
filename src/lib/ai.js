@@ -1,6 +1,4 @@
 // src/lib/ai.js
-// Shared OpenRouter AI utility — reusable across all views.
-
 const KEY = import.meta.env.VITE_OPENROUTER_API_KEY
 
 async function callAI(systemPrompt, userContent) {
@@ -25,21 +23,43 @@ async function callAI(systemPrompt, userContent) {
   return data.choices?.[0]?.message?.content?.trim() || null
 }
 
-/** Improve wording of interview notes / candidate comments. */
 export async function improveText(text, lang) {
   if (!text || text.trim().length < 15) return null
   const system = lang === 'de'
-    ? 'Du bist ein HR-Profi. Formuliere die folgenden Gesprächsnotizen in ein klares, strukturiertes und professionelles Interviewfeedback um. Behalte alle Kernaussagen. Gib NUR den verbesserten Text zurück – keine Erklärung, kein Präambel.'
-    : 'You are an HR professional. Rewrite the following interview notes into clear, structured, professional feedback. Keep all key points. Return ONLY the improved text – no explanation, no preamble.'
+    ? 'Du bist ein HR-Profi. Formuliere die folgenden Notizen in klares, professionelles Feedback um. Behalte alle Kernaussagen. Gib NUR den verbesserten Text zurück.'
+    : 'You are an HR professional. Rewrite the following notes into clear, professional feedback. Keep all key points. Return ONLY the improved text.'
   return callAI(system, text)
 }
 
-/** Extract key resume information into a first-impression paragraph. */
 export async function extractResumeInfo(resumeText, lang) {
   if (!resumeText || resumeText.trim().length < 50) return null
   const system = lang === 'de'
-    ? 'Du bist ein erfahrener HR-Recruiter. Lies den folgenden Lebenslauf und schreibe einen prägnanten ersten Eindruck (4–6 Sätze). Erwähne: wichtigste Fähigkeiten, Berufserfahrung (Jahre), Ausbildung, besondere Stärken oder Auffälligkeiten. Professioneller, objektiver Ton. Gib NUR den Fließtext zurück – keine Aufzählungen, keine Überschriften, kein Präambel.'
-    : 'You are an experienced HR recruiter. Read the following resume and write a concise first impression (4–6 sentences). Cover: key skills, years of experience, education, standout strengths or concerns. Professional, objective tone. Return ONLY the paragraph – no bullet points, no headings, no preamble.'
-  // Trim to ~6000 chars to stay within context limits of free model
+    ? 'Lies den Lebenslauf und schreibe einen prägnanten Ersteindruck (4–6 Sätze): Kernkompetenzen, Erfahrung, Ausbildung, Stärken. Nur Fließtext, kein Präambel.'
+    : 'Read this resume and write a concise first impression (4–6 sentences): core skills, experience, education, standout qualities. Plain text only, no preamble.'
   return callAI(system, resumeText.slice(0, 6000))
+}
+
+export async function extractCandidateInfo(resumeText, lang) {
+  if (!resumeText || resumeText.trim().length < 50) return null
+  const tpl = '{"firstName":"","lastName":"","email":"","phone":"","mobile":"","address":"","birthday":"","notes":""}'
+  const system = lang === 'de'
+    ? `Extrahiere Infos aus dem Lebenslauf. Gib NUR dieses JSON zurück (kein Markdown, keine Erklärung): ${tpl}. Geburtstag: YYYY-MM-DD. notes = professioneller Ersteindruck 3-4 Sätze.`
+    : `Extract info from this resume. Return ONLY this JSON (no markdown, no explanation): ${tpl}. Birthday: YYYY-MM-DD. notes = professional first impression 3-4 sentences.`
+  const raw = await callAI(system, resumeText.slice(0, 6000))
+  if (!raw) return null
+  try {
+    return JSON.parse(raw.replace(/```json|```/g,'').trim())
+  } catch {
+    const m = raw.match(/\{[\s\S]*\}/)
+    if (m) try { return JSON.parse(m[0]) } catch {}
+    return null
+  }
+}
+
+export async function generateInterviewQuestions(jobTitle, jobDesc, candidateNotes, lang) {
+  const system = lang === 'de'
+    ? `HR-Interviewer: Erstelle 9 Interviewfragen für die Position. Mix: 3 fachlich, 3 Verhalten (STAR), 2 Motivation, 1 Kultur. NUR nummerierte Liste – keine Einleitung, keine Kategorie-Überschriften.`
+    : `HR interviewer: Create 9 interview questions for this position. Mix: 3 technical, 3 behavioral (STAR), 2 motivation, 1 culture fit. Return ONLY a numbered list – no introduction, no category headers.`
+  const ctx = [`Position: ${jobTitle}`, jobDesc ? `Description: ${jobDesc.slice(0,500)}` : '', candidateNotes ? `Candidate: ${candidateNotes.slice(0,400)}` : ''].filter(Boolean).join('\n\n')
+  return callAI(system, ctx)
 }
