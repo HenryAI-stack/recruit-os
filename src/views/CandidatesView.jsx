@@ -279,8 +279,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         <textarea
           value={form.notes}
           onChange={e => F('notes', e.target.value)}
-          onBlur={triggerNotesImprove}
-          placeholder={lang==='de' ? 'Erste Eindrücke… (KI verbessert beim Verlassen oder per Klick)' : 'First impressions… (AI improves on blur or via button)'}
+          placeholder={lang==='de' ? 'Erste Eindrücke… (per Klick auf ✦ Verbessern)' : 'First impressions… (click ✦ Improve to enhance)'}
           disabled={notesImproving}
           style={{ opacity: notesImproving ? 0.6 : 1, transition:'opacity .2s' }}
         />
