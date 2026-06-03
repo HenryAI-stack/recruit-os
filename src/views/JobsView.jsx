@@ -42,7 +42,8 @@ export default function JobsView({ jobs, candidates, persistJobs, onArchive }) {
     setEditMode(true); setShowForm(true)
   }
 
-  function JobForm({ title }) {
+  // Plain render function — NOT a component — avoids remount-on-keystroke bug
+  function renderJobForm(title) {
     return (
       <div className="card" style={{ marginBottom:16 }}>
         <h3 style={{ marginBottom:16 }}>{title}</h3>
@@ -74,7 +75,7 @@ export default function JobsView({ jobs, candidates, persistJobs, onArchive }) {
         <button className="btn btn-sm" onClick={() => { setSelected(null); setShowForm(false); setEditMode(false) }} style={{ marginBottom:20 }}>
           <Icon name="arrowLeft" size={14} />{tc.back}
         </button>
-        {showForm && editMode && <JobForm title={tj.editTitle} />}
+        {showForm && editMode && renderJobForm(tj.editTitle)}
         {!editMode && (
           <div className="card" style={{ marginBottom:18 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
@@ -148,7 +149,7 @@ export default function JobsView({ jobs, candidates, persistJobs, onArchive }) {
           <Icon name="plus" size={14} color="#fff" />{tj.newJob}
         </button>
       </div>
-      {showForm && !editMode && <JobForm title={tj.addTitle} />}
+      {showForm && !editMode && renderJobForm(tj.addTitle)}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         {jobs.map(j => {
           const cnt = candidates.filter(c=>c.jobId===j.id).length
