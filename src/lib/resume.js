@@ -43,8 +43,15 @@ async function ghDelete(path, sha) {
 
 /** Encrypt and save resume to GitHub. Returns nothing. */
 export async function saveResume(candidateId, fileBuffer, filename) {
-  const bytes   = new Uint8Array(fileBuffer)
-  const b64     = btoa(bytes.reduce((s, b) => s + String.fromCharCode(b), ''))
+  // Convert to base64 in chunks — spreading millions of bytes at once
+  // causes "Maximum call stack size exceeded" for large files.
+  const bytes  = new Uint8Array(fileBuffer)
+  const CHUNK  = 8192
+  let binary   = ''
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
+  const b64     = btoa(binary)
   const payload = await encrypt({ filename, data: b64 })
   const { sha } = await ghGet(`${candidateId}.enc`)
   await ghPut(`${candidateId}.enc`, payload, sha)
