@@ -218,8 +218,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
               <textarea
                 value={editForm.feedback}
                 onChange={e => F('feedback', e.target.value)}
-                onBlur={triggerFeedbackImprove}
-                placeholder={lang==='de' ? 'Gesprächsnotizen… (KI verbessert beim Verlassen oder per Klick)' : 'Interview notes… (AI improves on blur or via button)'}
+                placeholder={lang==='de' ? 'Gesprächsnotizen… (per Klick auf ✦ Verbessern)' : 'Interview notes… (click ✦ Improve to enhance)'}
                 disabled={feedbackImproving}
                 style={{ opacity: feedbackImproving ? 0.6 : 1, transition:'opacity .2s' }}
               />
