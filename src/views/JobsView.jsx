@@ -7,7 +7,7 @@ import { useT }    from '../lib/i18n.jsx'
 const EMPTY = { title:'', dept:'', location:'', desc:'', links:[], isOpen:true }
 
 export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive }) {
-  const { t, lang } = useT()
+  const { t, lang, TYPE_DISPLAY } = useT()
   const tj = t.jobs; const tc = t.common
 
   const [selected,  setSelected]  = useState(null)
@@ -116,47 +116,76 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
             )}
           </div>
         )}
-        <div className="section-header"><span className="section-title">{tj.candidates} ({jobCands.length})</span></div>
+        <div className="section-header">
+          <span className="section-title">{tj.candidates} — {lang==='de'?'Top 3 nach Bewertung':'Top 3 by Rating'}</span>
+          <span style={{ fontSize:11, color:'#aaa' }}>{jobCands.length} {lang==='de'?'gesamt':'total'}</span>
+        </div>
 
-        {/* Candidates ranked by average star rating */}
         {(() => {
           const ranked = jobCands.map(c => {
             const civs = (interviews||[]).filter(i => i.candidateId===c.id && i.done && i.rating > 0)
             const avg  = civs.length > 0 ? civs.reduce((s,i)=>s+i.rating,0)/civs.length : 0
-            return { ...c, avgRating: avg, ratedCount: civs.length }
-          }).sort((a,b) => b.avgRating - a.avgRating)
+            return { ...c, avgRating: avg, ratedIvs: civs }
+          }).sort((a,b) => b.avgRating - a.avgRating).slice(0, 3)
+
+          const medalColor = ['#F59E0B','#9CA3AF','#B45309']
+          const medals     = ['🥇','🥈','🥉']
 
           return (
             <div className="card" style={{ padding:0, overflow:'hidden' }}>
               <table className="table">
                 <thead>
                   <tr>
-                    <th>#</th>
+                    <th style={{ width:32 }}></th>
                     <th>{t.candidates.firstName} {t.candidates.lastName}</th>
                     <th>{t.candidates.status}</th>
-                    <th>{lang==='de'?'Ø Bewertung':'Avg. Rating'}</th>
-                    <th>{t.candidates.appliedAt}</th>
+                    <th>{lang==='de'?'Einzelbewertungen':'Individual Ratings'}</th>
+                    <th>{lang==='de'?'Ø':'Avg.'}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ranked.map((c, i) => (
                     <tr key={c.id}>
-                      <td style={{ color:'#aaa', fontWeight:600, width:32 }}>#{i+1}</td>
-                      <td style={{ fontWeight:500 }}>{c.firstName} {c.lastName}</td>
+                      <td style={{ fontSize:18, textAlign:'center' }}>{medals[i]}</td>
+                      <td style={{ fontWeight:600 }}>{c.firstName} {c.lastName}</td>
                       <td><Badge status={c.status} /></td>
                       <td>
-                        {c.avgRating > 0
-                          ? <span style={{ color:'#F59E0B', fontSize:13 }}>
-                              {'★'.repeat(Math.round(c.avgRating))}{'☆'.repeat(5-Math.round(c.avgRating))}
-                              <span style={{ color:'#aaa', fontSize:11, marginLeft:5 }}>({c.avgRating.toFixed(1)})</span>
-                            </span>
-                          : <span style={{ color:'#ccc', fontSize:12 }}>{lang==='de'?'Noch keine':'Not yet rated'}</span>
+                        {c.ratedIvs.length > 0
+                          ? <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                              {c.ratedIvs.map((iv,k) => (
+                                <div key={k} style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                  <span style={{ color:'#F59E0B', fontSize:11, letterSpacing:1 }}>
+                                    {'★'.repeat(iv.rating)}{'☆'.repeat(5-iv.rating)}
+                                  </span>
+                                  <span style={{ fontSize:10, color:'#aaa' }}>
+                                    {TYPE_DISPLAY[iv.type]||iv.type}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          : <span style={{ color:'#ccc', fontSize:12 }}>{lang==='de'?'Keine':'None'}</span>
                         }
                       </td>
-                      <td style={{ color:'#888' }}>{c.appliedAt||tc.noData}</td>
+                      <td>
+                        {c.avgRating > 0
+                          ? <div>
+                              <span style={{ color:medalColor[i], fontSize:13, letterSpacing:1 }}>
+                                {'★'.repeat(Math.round(c.avgRating))}{'☆'.repeat(5-Math.round(c.avgRating))}
+                              </span>
+                              <span style={{ color:'#888', fontSize:11, display:'block', marginTop:2 }}>
+                                {c.avgRating.toFixed(1)} · {c.ratedIvs.length}×
+                              </span>
+                            </div>
+                          : <span style={{ color:'#ccc', fontSize:12 }}>—</span>
+                        }
+                      </td>
                     </tr>
                   ))}
-                  {ranked.length===0 && <tr><td colSpan={5} style={{ textAlign:'center',color:'#bbb',padding:24 }}>{tj.noCandidates}</td></tr>}
+                  {ranked.length===0 && (
+                    <tr><td colSpan={5} style={{ textAlign:'center',color:'#bbb',padding:24 }}>
+                      {lang==='de'?'Noch keine Bewertungen vorhanden.':'No rated interviews yet.'}
+                    </td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
