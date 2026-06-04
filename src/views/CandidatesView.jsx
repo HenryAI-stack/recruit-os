@@ -113,8 +113,7 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
         <textarea
           value={f.feedback}
           onChange={e => F('feedback', e.target.value)}
-          onBlur={handleFeedbackBlur}
-          placeholder={lang==='de' ? 'Gesprächsnotizen… (KI verbessert beim Verlassen)' : 'Interview notes… (AI improves on exit)'}
+          placeholder={lang==='de' ? 'Gesprächsnotizen… (per Klick auf ✦ Verbessern)' : 'Interview notes… (click ✦ Improve to enhance)'}
           disabled={improving}
           style={{ opacity: improving ? 0.6 : 1, transition:'opacity .2s' }}
         />
