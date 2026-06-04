@@ -6,8 +6,8 @@ import { useT }    from '../lib/i18n.jsx'
 
 const EMPTY = { title:'', dept:'', location:'', desc:'', links:[], isOpen:true }
 
-export default function JobsView({ jobs, candidates, persistJobs, onArchive }) {
-  const { t } = useT()
+export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive }) {
+  const { t, lang } = useT()
   const tj = t.jobs; const tc = t.common
 
   const [selected,  setSelected]  = useState(null)
@@ -117,22 +117,51 @@ export default function JobsView({ jobs, candidates, persistJobs, onArchive }) {
           </div>
         )}
         <div className="section-header"><span className="section-title">{tj.candidates} ({jobCands.length})</span></div>
-        <div className="card" style={{ padding:0, overflow:'hidden' }}>
-          <table className="table">
-            <thead><tr><th>{t.candidates.firstName} {t.candidates.lastName}</th><th>{t.candidates.status}</th><th>{t.candidates.email}</th><th>{t.candidates.appliedAt}</th></tr></thead>
-            <tbody>
-              {jobCands.map(c => (
-                <tr key={c.id}>
-                  <td style={{ fontWeight:500 }}>{c.firstName} {c.lastName}</td>
-                  <td><Badge status={c.status} /></td>
-                  <td style={{ color:'#888' }}>{c.email}</td>
-                  <td style={{ color:'#888' }}>{c.appliedAt||tc.noData}</td>
-                </tr>
-              ))}
-              {jobCands.length===0 && <tr><td colSpan={4} style={{ textAlign:'center',color:'#bbb',padding:24 }}>{tj.noCandidates}</td></tr>}
-            </tbody>
-          </table>
-        </div>
+
+        {/* Candidates ranked by average star rating */}
+        {(() => {
+          const ranked = jobCands.map(c => {
+            const civs = (interviews||[]).filter(i => i.candidateId===c.id && i.done && i.rating > 0)
+            const avg  = civs.length > 0 ? civs.reduce((s,i)=>s+i.rating,0)/civs.length : 0
+            return { ...c, avgRating: avg, ratedCount: civs.length }
+          }).sort((a,b) => b.avgRating - a.avgRating)
+
+          return (
+            <div className="card" style={{ padding:0, overflow:'hidden' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>{t.candidates.firstName} {t.candidates.lastName}</th>
+                    <th>{t.candidates.status}</th>
+                    <th>{lang==='de'?'Ø Bewertung':'Avg. Rating'}</th>
+                    <th>{t.candidates.appliedAt}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ranked.map((c, i) => (
+                    <tr key={c.id}>
+                      <td style={{ color:'#aaa', fontWeight:600, width:32 }}>#{i+1}</td>
+                      <td style={{ fontWeight:500 }}>{c.firstName} {c.lastName}</td>
+                      <td><Badge status={c.status} /></td>
+                      <td>
+                        {c.avgRating > 0
+                          ? <span style={{ color:'#F59E0B', fontSize:13 }}>
+                              {'★'.repeat(Math.round(c.avgRating))}{'☆'.repeat(5-Math.round(c.avgRating))}
+                              <span style={{ color:'#aaa', fontSize:11, marginLeft:5 }}>({c.avgRating.toFixed(1)})</span>
+                            </span>
+                          : <span style={{ color:'#ccc', fontSize:12 }}>{lang==='de'?'Noch keine':'Not yet rated'}</span>
+                        }
+                      </td>
+                      <td style={{ color:'#888' }}>{c.appliedAt||tc.noData}</td>
+                    </tr>
+                  ))}
+                  {ranked.length===0 && <tr><td colSpan={5} style={{ textAlign:'center',color:'#bbb',padding:24 }}>{tj.noCandidates}</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          )
+        })()}
       </div>
     )
   }
