@@ -300,7 +300,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
             )}
 
             {/* Job dropdown — with location in brackets */}
-            {allJobs.length > 1 && (
+            {allJobs.length > 0 && (
               <select value={filterJob} onChange={e=>setFilterJob(e.target.value)} style={{
                 padding:'5px 28px 5px 10px', borderRadius:8, fontSize:12, border:'1px solid #EBEBEA',
                 background:'#fff', cursor:'pointer', color: filterJob==='all'?'#888':'#1A1A1A',
