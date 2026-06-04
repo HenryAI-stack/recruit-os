@@ -49,10 +49,11 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
   const ti = t.interviews; const tc = t.common
 
   // ── Filter / search state ────────────────────────────────────────────────
-  const [search,      setSearch]      = useState('')
-  const [filterStatus,setFilterStatus]= useState('all')   // all | planned | done
-  const [filterType,  setFilterType]  = useState('all')
-  const [filterJob,   setFilterJob]   = useState('all')
+  const [search,       setSearch]       = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')   // all | planned | done
+  const [filterType,   setFilterType]   = useState('all')
+  const [filterJob,    setFilterJob]    = useState('all')
+  const [filterRating, setFilterRating] = useState(0)       // 0 = all, 1–5 = minimum stars
 
   // ── Edit state ───────────────────────────────────────────────────────────
   const [editingId,          setEditingId]          = useState(null)
@@ -105,7 +106,8 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
       const matchStatus = filterStatus==='all' || (filterStatus==='planned'?!iv.done:iv.done)
       const matchType   = filterType==='all'   || iv.type===filterType
       const matchJob    = filterJob==='all'    || iv.jobId===filterJob
-      return matchSearch && matchStatus && matchType && matchJob
+      const matchRating = filterRating === 0 || iv.rating >= filterRating
+      return matchSearch && matchStatus && matchType && matchJob && matchRating
     }).sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0))
   }, [interviews, candidates, jobs, search, filterStatus, filterType, filterJob])
 
@@ -288,37 +290,53 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
               <select value={filterType} onChange={e=>setFilterType(e.target.value)} style={{
                 padding:'5px 28px 5px 10px', borderRadius:8, fontSize:12, border:'1px solid #EBEBEA',
                 background:'#fff', cursor:'pointer', color: filterType==='all'?'#888':'#1A1A1A',
-                fontWeight: filterType==='all'?400:600, fontFamily:'inherit',
-                appearance:'none',
+                fontWeight: filterType==='all'?400:600, fontFamily:'inherit', appearance:'none',
                 backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23aaa'/%3E%3C/svg%3E")`,
                 backgroundRepeat:'no-repeat', backgroundPosition:'right 9px center',
               }}>
                 <option value="all">{ti.type}: {tc.all}</option>
-                {allTypes.map(tp => <option key={tp} value={tp}>{tp}</option>)}
+                {allTypes.map(tp => <option key={tp} value={tp}>{TYPE_DISPLAY[tp]||tp}</option>)}
               </select>
             )}
 
-            {/* Job dropdown */}
+            {/* Job dropdown — with location in brackets */}
             {allJobs.length > 1 && (
               <select value={filterJob} onChange={e=>setFilterJob(e.target.value)} style={{
                 padding:'5px 28px 5px 10px', borderRadius:8, fontSize:12, border:'1px solid #EBEBEA',
                 background:'#fff', cursor:'pointer', color: filterJob==='all'?'#888':'#1A1A1A',
-                fontWeight: filterJob==='all'?400:600, fontFamily:'inherit',
-                appearance:'none',
+                fontWeight: filterJob==='all'?400:600, fontFamily:'inherit', appearance:'none',
                 backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23aaa'/%3E%3C/svg%3E")`,
                 backgroundRepeat:'no-repeat', backgroundPosition:'right 9px center',
               }}>
                 <option value="all">{t.nav.jobs}: {tc.all}</option>
-                {allJobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
+                {allJobs.map(j => (
+                  <option key={j.id} value={j.id}>{j.title}{j.location?` (${j.location})`:''}</option>
+                ))}
               </select>
             )}
 
-            {/* Clear all filters */}
-            {(filterStatus!=='all' || filterType!=='all' || filterJob!=='all' || search) && (
+            {/* Star rating filter */}
+            <select value={filterRating} onChange={e=>setFilterRating(Number(e.target.value))} style={{
+              padding:'5px 28px 5px 10px', borderRadius:8, fontSize:12, border:'1px solid #EBEBEA',
+              background:'#fff', cursor:'pointer', color: filterRating===0?'#888':'#1A1A1A',
+              fontWeight: filterRating===0?400:600, fontFamily:'inherit', appearance:'none',
+              backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23aaa'/%3E%3C/svg%3E")`,
+              backgroundRepeat:'no-repeat', backgroundPosition:'right 9px center',
+            }}>
+              <option value={0}>{lang==='de'?'Alle Bewertungen':'All Ratings'}</option>
+              <option value={5}>★★★★★ (5)</option>
+              <option value={4}>★★★★☆ (4+)</option>
+              <option value={3}>★★★☆☆ (3+)</option>
+              <option value={2}>★★☆☆☆ (2+)</option>
+              <option value={1}>★☆☆☆☆ (1+)</option>
+            </select>
+
+            {/* Clear all */}
+            {(filterStatus!=='all' || filterType!=='all' || filterJob!=='all' || filterRating!==0 || search) && (
               <button className="btn btn-sm" style={{ marginLeft:'auto', color:'#888' }}
-                onClick={()=>{ setSearch(''); setFilterStatus('all'); setFilterType('all'); setFilterJob('all') }}>
+                onClick={()=>{ setSearch(''); setFilterStatus('all'); setFilterType('all'); setFilterJob('all'); setFilterRating(0) }}>
                 <Icon name="x" size={12} color="#aaa" />
-                {t.lang === 'de' ? 'Filter zurücksetzen' : 'Clear filters'}
+                {lang==='de' ? 'Filter zurücksetzen' : 'Clear filters'}
               </button>
             )}
           </div>
