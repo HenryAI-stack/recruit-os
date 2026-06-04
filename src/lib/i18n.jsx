@@ -22,6 +22,35 @@ export const STATUS_DISPLAY = {
   },
 }
 
+// Interview types stored in German → map to display label (same pattern as statuses)
+export const TYPE_DISPLAY = {
+  en: {
+    'Erstgespräch':         'First Interview',
+    'Technisches Gespräch': 'Technical Interview',
+    'Fachgespräch':         'Specialist Interview',
+    'HR-Interview':         'HR Interview',
+    'Finalgespräch':        'Final Interview',
+    // EN keys pass through unchanged
+    'First Interview':      'First Interview',
+    'Technical Interview':  'Technical Interview',
+    'Specialist Interview':  'Specialist Interview',
+    'HR Interview':         'HR Interview',
+    'Final Interview':      'Final Interview',
+  },
+  de: {
+    'Erstgespräch':         'Erstgespräch',
+    'Technisches Gespräch': 'Technisches Gespräch',
+    'Fachgespräch':         'Fachgespräch',
+    'HR-Interview':         'HR-Interview',
+    'Finalgespräch':        'Finalgespräch',
+    'First Interview':      'Erstgespräch',
+    'Technical Interview':  'Technisches Gespräch',
+    'Specialist Interview':  'Fachgespräch',
+    'HR Interview':         'HR-Interview',
+    'Final Interview':      'Finalgespräch',
+  },
+}
+
 const T = {
   de: {
     nav: {
@@ -305,7 +334,7 @@ export function LangProvider({ children }) {
   const [lang, setLang] = useState(() => localStorage.getItem('ats_lang') || 'de')
   function switchLang(l) { setLang(l); localStorage.setItem('ats_lang', l) }
   return (
-    <LangContext.Provider value={{ t: T[lang], lang, setLang: switchLang, STATUS_DISPLAY: STATUS_DISPLAY[lang] }}>
+    <LangContext.Provider value={{ t: T[lang], lang, setLang: switchLang, STATUS_DISPLAY: STATUS_DISPLAY[lang], TYPE_DISPLAY: TYPE_DISPLAY[lang] }}>
       {children}
     </LangContext.Provider>
   )
