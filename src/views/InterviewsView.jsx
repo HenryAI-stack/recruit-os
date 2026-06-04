@@ -45,7 +45,7 @@ function Chip({ label, active, onClick }) {
 }
 
 export default function InterviewsView({ jobs, candidates, interviews, persistInterviews }) {
-  const { t, lang } = useT()
+  const { t, lang, TYPE_DISPLAY } = useT()
   const ti = t.interviews; const tc = t.common
 
   // ── Filter / search state ────────────────────────────────────────────────
@@ -149,7 +149,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
               <span style={{ fontSize:13, fontWeight:700 }}>{name}</span>
-              <span style={{ fontSize:12, color:'#888' }}>— {iv.type}</span>
+              <span style={{ fontSize:12, color:'#888' }}>— {TYPE_DISPLAY[iv.type]||iv.type}</span>
             </div>
             <div style={{ display:'flex', gap:12, fontSize:11, color:'#aaa', marginTop:3, flexWrap:'wrap' }}>
               {j && <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="briefcase" size={11} color="#ccc" />{j.title}</span>}
