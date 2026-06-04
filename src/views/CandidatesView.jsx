@@ -134,7 +134,7 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
 }
 
 export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user }) {
-  const { t, STATUS_DISPLAY, lang } = useT()
+  const { t, STATUS_DISPLAY, TYPE_DISPLAY, lang } = useT()
   const tc = t.common; const tca = t.candidates; const ti = t.interviews
 
   const [filter,         setFilter]         = useState('all')
@@ -200,15 +200,22 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   }
 
   // ── Interview question generation ─────────────────────────────────────────
+  // Load existing questions when entering a candidate detail view
+  const existingQuestions = candidate?.interviewQuestions || null
+
   async function handleGenerateQuestions() {
     const cand = candidates.find(c => c.id===selected)
     const job  = jobs.find(j => j.id===cand?.jobId)
     if (!job) return
-    setQuestionsLoading(true); setQuestionsError(null); setQuestions(null)
+    setQuestionsLoading(true); setQuestionsError(null)
     try {
       const result = await generateInterviewQuestions(job.title, job.desc, cand?.notes, lang)
-      if (result) setQuestions(result)
-      else throw new Error(lang==='de' ? 'Keine Fragen generiert' : 'No questions generated')
+      if (result) {
+        setQuestions(result)
+        // Persist to candidate so they don't need to be regenerated
+        const next = candidates.map(c => c.id===selected ? { ...c, interviewQuestions: result } : c)
+        await persistCandidates(next)
+      } else throw new Error(lang==='de' ? 'Keine Fragen generiert' : 'No questions generated')
     } catch(e) {
       setQuestionsError(lang==='de' ? `Fehler: ${e.message}` : `Error: ${e.message}`)
     } finally { setQuestionsLoading(false) }
@@ -469,32 +476,46 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
                 <span style={{ fontSize:12, fontWeight:700, color:'#555', textTransform:'uppercase', letterSpacing:'.05em' }}>
                   {lang==='de' ? 'Interview-Vorbereitung' : 'Interview Preparation'}
                 </span>
+                {existingQuestions && !questions && (
+                  <span style={{ fontSize:10, padding:'2px 7px', borderRadius:100, background:'#ECFDF5', color:'#065F46', fontWeight:600 }}>
+                    ✓ {lang==='de' ? 'Gespeichert' : 'Saved'}
+                  </span>
+                )}
               </div>
-              <button
-                onClick={handleGenerateQuestions}
-                disabled={questionsLoading || !jobs.find(j=>j.id===candidate.jobId)}
-                style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', border:'1px solid #C4B5FD', background:'#F0EEFF', color:'#5B21B6', fontFamily:'inherit', opacity:questionsLoading?0.7:1 }}>
-                {questionsLoading
-                  ? <><span style={{ width:7,height:7,borderRadius:'50%',background:'#7C3AED',display:'inline-block',animation:'pulse 1s ease-in-out infinite' }}/>{lang==='de'?'Generiere…':'Generating…'}</>
-                  : <><Icon name="star" size={13} color="#7C3AED"/>{lang==='de'?'Fragen generieren':'Generate Questions'}</>}
-              </button>
+              <div style={{ display:'flex', gap:7 }}>
+                {existingQuestions && !questions && (
+                  <button onClick={() => setQuestions(existingQuestions)}
+                    style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:8, fontSize:12, fontWeight:500, cursor:'pointer', border:'1px solid #EBEBEA', background:'#fff', fontFamily:'inherit' }}>
+                    {lang==='de' ? 'Anzeigen' : 'Show saved'}
+                  </button>
+                )}
+                <button
+                  onClick={handleGenerateQuestions}
+                  disabled={questionsLoading || !jobs.find(j=>j.id===candidate.jobId)}
+                  style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', border:'1px solid #C4B5FD', background:'#F0EEFF', color:'#5B21B6', fontFamily:'inherit', opacity:questionsLoading?0.7:1 }}>
+                  {questionsLoading
+                    ? <><span style={{ width:7,height:7,borderRadius:'50%',background:'#7C3AED',display:'inline-block',animation:'pulse 1s ease-in-out infinite' }}/>{lang==='de'?'Generiere…':'Generating…'}</>
+                    : <><Icon name="star" size={13} color="#7C3AED"/>{existingQuestions ? (lang==='de'?'Neu generieren':'Regenerate') : (lang==='de'?'Fragen generieren':'Generate Questions')}</>}
+                </button>
+              </div>
             </div>
 
             {questionsError && <p style={{ marginTop:8, fontSize:11, color:'#EF4444' }}>{questionsError}</p>}
 
-            {questions && (
+            {(questions || (existingQuestions && questions)) && (
               <div style={{ marginTop:12 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
                   <span style={{ fontSize:11, color:'#888' }}>
-                    {lang==='de' ? `Für: ${jobs.find(j=>j.id===candidate.jobId)?.title}` : `For: ${jobs.find(j=>j.id===candidate.jobId)?.title}`}
+                    {jobs.find(j=>j.id===candidate.jobId)?.title}
                   </span>
-                  <button onClick={() => navigator.clipboard?.writeText(questions)} style={{ fontSize:11, color:'#1A56DB', background:'none', border:'none', cursor:'pointer', padding:'2px 6px' }}>
+                  <button onClick={() => navigator.clipboard?.writeText(questions||existingQuestions)}
+                    style={{ fontSize:11, color:'#1A56DB', background:'none', border:'none', cursor:'pointer', padding:'2px 6px' }}>
                     {lang==='de' ? '📋 Kopieren' : '📋 Copy all'}
                   </button>
                 </div>
                 <div style={{ background:'#fff', border:'1px solid #EBEBEA', borderRadius:8, padding:'12px 14px' }}>
-                  {questions.split('\n').filter(l=>l.trim()).map((line, i) => (
-                    <p key={i} style={{ fontSize:13, color:'#1A1A1A', lineHeight:1.7, marginBottom: i < questions.split('\n').filter(l=>l.trim()).length-1 ? 8 : 0 }}>{line}</p>
+                  {(questions||existingQuestions).split('\n').filter(l=>l.trim()).map((line, i, arr) => (
+                    <p key={i} style={{ fontSize:13, color:'#1A1A1A', lineHeight:1.7, marginBottom:i<arr.length-1?8:0 }}>{line}</p>
                   ))}
                 </div>
                 <button onClick={() => setQuestions(null)} style={{ marginTop:6, fontSize:11, color:'#aaa', background:'none', border:'none', cursor:'pointer' }}>
@@ -535,7 +556,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
                   </div>
                   <div style={{ flex:1 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:6 }}>
-                      <span style={{ fontSize:13, fontWeight:700 }}>{iv.type}</span>
+                      <span style={{ fontSize:13, fontWeight:700 }}>{TYPE_DISPLAY[iv.type]||iv.type}</span>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <span style={{ fontSize:11, padding:'2px 8px', borderRadius:100, fontWeight:600, background:iv.done?'#ECFDF5':'#EBF4FF', color:iv.done?'#065F46':'#1A56DB' }}>
                           {iv.done ? ti.statusDone : ti.statusPlanned}
