@@ -17,6 +17,8 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
   const [linkLabel, setLinkLabel] = useState('')
   const [linkUrl,   setLinkUrl]   = useState('')
   const [saving,    setSaving]    = useState(false)
+  const [expandedDesc,      setExpandedDesc]      = useState(new Set())
+  const [showMoreCandidates,setShowMoreCandidates]= useState(false)
 
   const job = jobs.find(j=>j.id===selected)
   const F   = (k,v) => setForm(f=>({...f,[k]:v}))
@@ -72,7 +74,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
     const jobCands = candidates.filter(c=>c.jobId===job.id)
     return (
       <div>
-        <button className="btn btn-sm" onClick={() => { setSelected(null); setShowForm(false); setEditMode(false) }} style={{ marginBottom:20 }}>
+        <button className="btn btn-sm" onClick={() => { setSelected(null); setShowForm(false); setEditMode(false); setShowMoreCandidates(false) }} style={{ marginBottom:20 }}>
           <Icon name="arrowLeft" size={14} />{tc.back}
         </button>
         {showForm && editMode && renderJobForm(tj.editTitle)}
@@ -191,6 +193,61 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
             </div>
           )
         })()}
+
+        {/* See more candidates — all non-Rejected, sorted by name */}
+        {(() => {
+          const REJECTED = ['Abgelehnt','Rejected']
+          const others   = jobCands
+            .filter(c => !REJECTED.includes(c.status))
+            .filter(c => {
+              // exclude top 3 already shown
+              const ranked = jobCands.map(c => {
+                const civs = (interviews||[]).filter(i=>i.candidateId===c.id&&i.done&&i.rating>0)
+                const avg  = civs.length>0 ? civs.reduce((s,i)=>s+i.rating,0)/civs.length : 0
+                return { id:c.id, avg }
+              }).sort((a,b)=>b.avg-a.avg).slice(0,3).map(x=>x.id)
+              return !ranked.includes(c.id)
+            })
+
+          if (others.length === 0) return null
+          return (
+            <div style={{ marginTop:12 }}>
+              <button onClick={() => setShowMoreCandidates(v=>!v)}
+                style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#1A56DB', background:'none', border:'none', cursor:'pointer', padding:'4px 0', fontFamily:'inherit', fontWeight:500 }}>
+                <Icon name={showMoreCandidates?'chevronRight':'chevronRight'} size={14} color="#1A56DB"
+                  style={{ transform: showMoreCandidates ? 'rotate(90deg)' : 'rotate(0deg)', transition:'transform .2s' }} />
+                {showMoreCandidates
+                  ? (lang==='de'?'Weniger anzeigen':'Show less')
+                  : `${lang==='de'?'Weitere Kandidaten anzeigen':'See more candidates'} (${others.length})`}
+              </button>
+
+              {showMoreCandidates && (
+                <div className="card" style={{ padding:0, overflow:'hidden', marginTop:10 }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t.candidates.firstName} {t.candidates.lastName}</th>
+                        <th>{t.candidates.status}</th>
+                        <th>{t.candidates.appliedAt}</th>
+                        <th>{t.candidates.email}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {others.map(c => (
+                        <tr key={c.id}>
+                          <td style={{ fontWeight:500 }}>{c.firstName} {c.lastName}</td>
+                          <td><Badge status={c.status} /></td>
+                          <td style={{ color:'#888' }}>{c.appliedAt||tc.noData}</td>
+                          <td style={{ color:'#888' }}>{c.email}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
     )
   }
@@ -227,7 +284,21 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                 </span>
               </div>
               <p style={{ fontSize:12, color:'#888', lineHeight:1.65, marginBottom:12 }}>
-                {j.desc?.substring(0,100)}{j.desc?.length>100?'…':''}
+                {expandedDesc.has(j.id) || (j.desc||'').length <= 100
+                  ? j.desc
+                  : <>{j.desc?.substring(0,100)}…{' '}
+                    <button type="button" onClick={e=>{ e.stopPropagation(); setExpandedDesc(s=>new Set([...s,j.id])) }}
+                      style={{ color:'#378ADD', background:'none', border:'none', cursor:'pointer', fontSize:12, padding:0, fontFamily:'inherit' }}>
+                      {lang==='de'?'Mehr lesen':'Read more'}
+                    </button>
+                  </>
+                }
+                {expandedDesc.has(j.id) && (j.desc||'').length > 100 && (
+                  <>{' '}<button type="button" onClick={e=>{ e.stopPropagation(); setExpandedDesc(s=>{ const n=new Set(s); n.delete(j.id); return n }) }}
+                    style={{ color:'#aaa', background:'none', border:'none', cursor:'pointer', fontSize:12, padding:0, fontFamily:'inherit' }}>
+                    {lang==='de'?'Weniger':'Less'}
+                  </button></>
+                )}
               </p>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
                 {j.links?.map((l,i) => (
