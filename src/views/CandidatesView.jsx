@@ -57,10 +57,16 @@ function Field({ label,value,onChange,placeholder,multiline,select,type }) {
 
 function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t }) {
   const { lang } = useT()
-  const [f,          setF]          = useState(initial)
-  const [improving,  setImproving]  = useState(false)
-  const [aiApplied,  setAiApplied]  = useState(false)
-  const F = (k,v) => { setF(x=>({...x,[k]:v})); if(k==='feedback') setAiApplied(false) }
+  const [f,             setF]             = useState(initial)
+  const [improving,     setImproving]     = useState(false)
+  const [aiApplied,     setAiApplied]     = useState(false)
+  const [feedbackError, setFeedbackError] = useState(null)
+  const feedbackRef = useRef(initial.feedback || '')
+
+  const F = (k,v) => {
+    setF(x=>({...x,[k]:v}))
+    if (k==='feedback') { feedbackRef.current = v; setAiApplied(false); setFeedbackError(null) }
+  }
 
   const jobId  = initial.jobId || candidates.find(c=>c.id===candidateId)?.jobId
   const ti     = t.interviews
@@ -70,17 +76,16 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
     {v:'3',l:'★★★ 3/5'},{v:'4',l:'★★★★ 4/5'},{v:'5',l:'★★★★★ 5/5'},
   ]
 
-  async function handleFeedbackBlur() {
-    if (!f.feedback || f.feedback.trim().length < 15 || improving) return
-    setImproving(true)
+  async function triggerImprove() {
+    const text = feedbackRef.current
+    if (!text || text.trim().length < 15 || improving) return
+    setImproving(true); setFeedbackError(null)
     try {
-      const improved = await improveText(f.feedback, lang)
-      if (improved) { setF(x=>({...x, feedback: improved})); setAiApplied(true) }
+      const improved = await improveText(text, lang)
+      if (improved) { setF(x=>({...x, feedback: improved})); feedbackRef.current = improved; setAiApplied(true) }
     } catch(e) {
-      console.error('OpenRouter error:', e)
-    } finally {
-      setImproving(false)
-    }
+      setFeedbackError(lang==='de' ? `KI-Fehler: ${e.message}` : `AI error: ${e.message}`)
+    } finally { setImproving(false) }
   }
 
   return (
@@ -94,21 +99,26 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
         <Field label={ti.statusLabel} value={f.done?'1':'0'} onChange={v=>F('done',v==='1')}  select={[{v:'0',l:ti.statusPlanned},{v:'1',l:ti.statusDone}]} />
       </div>
 
-      {/* Feedback field with AI improvement */}
+      {/* Feedback field with AI improvement button */}
       <div className="field">
-        <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:6 }}>
           <span>{ti.feedback}</span>
-          {improving && (
-            <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'#7C3AED', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
-              <span style={{ width:8, height:8, borderRadius:'50%', background:'#7C3AED', display:'inline-block', animation:'pulse 1s ease-in-out infinite' }} />
-              {lang==='de' ? 'KI verbessert…' : 'AI improving…'}
-            </span>
-          )}
-          {aiApplied && !improving && (
-            <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, color:'#10B981', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
-              ✦ {lang==='de' ? 'KI verbessert' : 'AI improved'}
-            </span>
-          )}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            {improving && (
+              <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, color:'#7C3AED', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+                <span style={{ width:7, height:7, borderRadius:'50%', background:'#7C3AED', display:'inline-block', animation:'pulse 1s ease-in-out infinite' }} />
+                {lang==='de' ? 'KI verbessert…' : 'AI improving…'}
+              </span>
+            )}
+            {aiApplied && !improving && (
+              <span style={{ fontSize:10, color:'#10B981', fontWeight:600 }}>✦ {lang==='de' ? 'KI verbessert' : 'AI improved'}</span>
+            )}
+            <button type="button" onClick={triggerImprove}
+              disabled={improving || !f.feedback || f.feedback.trim().length < 15}
+              style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, fontSize:10, fontWeight:600, cursor:'pointer', border:'1px solid #C4B5FD', background:'#F0EEFF', color:'#5B21B6', fontFamily:'inherit', opacity:(!f.feedback || f.feedback.trim().length < 15) ? 0.4 : 1 }}>
+              ✦ {lang==='de' ? 'Verbessern' : 'Improve'}
+            </button>
+          </div>
         </label>
         <textarea
           value={f.feedback}
@@ -117,6 +127,7 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
           disabled={improving}
           style={{ opacity: improving ? 0.6 : 1, transition:'opacity .2s' }}
         />
+        {feedbackError && <p style={{ fontSize:11, color:'#EF4444', marginTop:4 }}>{feedbackError}</p>}
       </div>
 
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
@@ -137,6 +148,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   const tc = t.common; const tca = t.candidates; const ti = t.interviews
 
   const [filter,         setFilter]         = useState('all')
+  const [filterJob,      setFilterJob]      = useState('all')
   const [selected,       setSelected]       = useState(null)
   const [showForm,       setShowForm]       = useState(false)
   const [editCand,       setEditCand]       = useState(false)
@@ -158,7 +170,11 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   const cvInputRef = useRef()   // always holds the latest notes value, avoids stale closure
 
   const candidate = candidates.find(c=>c.id===selected)
-  const filtered  = filter==='all' ? candidates : candidates.filter(c=>c.status===filter)
+  const filtered = candidates.filter(c => {
+    const matchStatus = filter==='all' || c.status===filter
+    const matchJob    = filterJob==='all' || c.jobId===filterJob
+    return matchStatus && matchJob
+  })
   const F = (k,v) => {
     setForm(f=>({...f,[k]:v}))
     if (k==='notes') { notesRef.current = v; setNotesAiApplied(false); setNotesError(null) }
@@ -594,12 +610,28 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
       </div>
       {showForm && !editCand && renderCandForm(tca.addTitle)}
 
-      {/* Filters */}
-      <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginBottom:16 }}>
+      {/* Filters — job dropdown + status chips */}
+      <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginBottom:16, alignItems:'center' }}>
+        {/* Job dropdown */}
+        {jobs.length > 0 && (
+          <select value={filterJob} onChange={e=>setFilterJob(e.target.value)} style={{
+            padding:'5px 28px 5px 10px', borderRadius:8, fontSize:12, border:'1px solid #EBEBEA',
+            background:'#fff', cursor:'pointer', color: filterJob==='all'?'#888':'#1A1A1A',
+            fontWeight: filterJob==='all'?400:600, fontFamily:'inherit', appearance:'none',
+            backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23aaa'/%3E%3C/svg%3E")`,
+            backgroundRepeat:'no-repeat', backgroundPosition:'right 9px center',
+          }}>
+            <option value="all">{lang==='de'?'Alle Stellen':'All Positions'}</option>
+            {jobs.map(j => (
+              <option key={j.id} value={j.id}>{j.title}{j.location?` (${j.location})`:''}</option>
+            ))}
+          </select>
+        )}
+        {/* Status chips */}
         {['all',...STATUSES].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{
+          <button key={f} onClick={()=>setFilter(f)} style={{
             padding:'4px 12px', borderRadius:100, fontSize:12, fontWeight:filter===f?600:400,
-            cursor:'pointer', fontFamily:'inherit',
+            cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
             border:     filter===f?'1px solid #1A1A1A':'1px solid #EBEBEA',
             background: filter===f?'#1A1A1A':'#fff',
             color:      filter===f?'#fff':'#888',
