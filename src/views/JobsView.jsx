@@ -140,11 +140,13 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
         </div>
 
         {(() => {
-          const ranked = jobCands.map(c => {
-            const civs = (interviews||[]).filter(i => i.candidateId===c.id && i.done && i.rating > 0)
-            const avg  = civs.length > 0 ? civs.reduce((s,i)=>s+i.rating,0)/civs.length : 0
-            return { ...c, avgRating: avg, ratedIvs: civs }
-          }).sort((a,b) => b.avgRating - a.avgRating).slice(0, 3)
+          const ranked = jobCands
+            .filter(c => !['Abgelehnt','Rejected'].includes(c.status))
+            .map(c => {
+              const civs = (interviews||[]).filter(i => i.candidateId===c.id && i.done && i.rating > 0)
+              const avg  = civs.length > 0 ? civs.reduce((s,i)=>s+i.rating,0)/civs.length : 0
+              return { ...c, avgRating: avg, ratedIvs: civs }
+            }).sort((a,b) => b.avgRating - a.avgRating).slice(0, 3)
 
           const medalColor = ['#F59E0B','#9CA3AF','#B45309']
           const medals     = ['🥇','🥈','🥉']
@@ -213,17 +215,16 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
         {/* See more candidates — all non-Rejected, sorted by name */}
         {(() => {
           const REJECTED = ['Abgelehnt','Rejected']
-          const others   = jobCands
+          const allRanked = jobCands
             .filter(c => !REJECTED.includes(c.status))
-            .filter(c => {
-              // exclude top 3 already shown
-              const ranked = jobCands.map(c => {
-                const civs = (interviews||[]).filter(i=>i.candidateId===c.id&&i.done&&i.rating>0)
-                const avg  = civs.length>0 ? civs.reduce((s,i)=>s+i.rating,0)/civs.length : 0
-                return { id:c.id, avg }
-              }).sort((a,b)=>b.avg-a.avg).slice(0,3).map(x=>x.id)
-              return !ranked.includes(c.id)
-            })
+            .map(c => {
+              const civs = (interviews||[]).filter(i=>i.candidateId===c.id&&i.done&&i.rating>0)
+              const avg  = civs.length>0 ? civs.reduce((s,i)=>s+i.rating,0)/civs.length : 0
+              return { ...c, avgRating: avg, ratedIvs: civs }
+            }).sort((a,b)=>b.avgRating-a.avgRating)
+
+          const top3Ids = allRanked.slice(0,3).map(x=>x.id)
+          const others  = allRanked.filter(c => !top3Ids.includes(c.id))
 
           if (others.length === 0) return null
           return (
@@ -244,8 +245,8 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                       <tr>
                         <th>{t.candidates.firstName} {t.candidates.lastName}</th>
                         <th>{t.candidates.status}</th>
-                        <th>{t.candidates.appliedAt}</th>
-                        <th>{t.candidates.email}</th>
+                        <th>{lang==='de'?'Einzelbewertungen':'Individual Ratings'}</th>
+                        <th>{lang==='de'?'Ø':'Avg.'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -253,8 +254,36 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                         <tr key={c.id}>
                           <td style={{ fontWeight:500 }}>{c.firstName} {c.lastName}</td>
                           <td><Badge status={c.status} /></td>
-                          <td style={{ color:'#888' }}>{c.appliedAt||tc.noData}</td>
-                          <td style={{ color:'#888' }}>{c.email}</td>
+                          <td>
+                            {c.ratedIvs.length > 0
+                              ? <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                                  {c.ratedIvs.map((iv,k) => (
+                                    <div key={k} style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                      <span style={{ color:'#F59E0B', fontSize:11, letterSpacing:1 }}>
+                                        {'★'.repeat(iv.rating)}{'☆'.repeat(5-iv.rating)}
+                                      </span>
+                                      <span style={{ fontSize:10, color:'#aaa' }}>
+                                        {TYPE_DISPLAY[iv.type]||iv.type}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              : <span style={{ color:'#ccc', fontSize:12 }}>{lang==='de'?'Keine':'None'}</span>
+                            }
+                          </td>
+                          <td>
+                            {c.avgRating > 0
+                              ? <div>
+                                  <span style={{ color:'#aaa', fontSize:13, letterSpacing:1 }}>
+                                    {'★'.repeat(Math.round(c.avgRating))}{'☆'.repeat(5-Math.round(c.avgRating))}
+                                  </span>
+                                  <span style={{ color:'#888', fontSize:11, display:'block', marginTop:2 }}>
+                                    {c.avgRating.toFixed(1)} · {c.ratedIvs.length}×
+                                  </span>
+                                </div>
+                              : <span style={{ color:'#ccc', fontSize:12 }}>—</span>
+                            }
+                          </td>
                         </tr>
                       ))}
                     </tbody>
