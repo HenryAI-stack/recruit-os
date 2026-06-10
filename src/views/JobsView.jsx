@@ -19,6 +19,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
   const [saving,    setSaving]    = useState(false)
   const [expandedDesc,      setExpandedDesc]      = useState(new Set())
   const [showMoreCandidates,setShowMoreCandidates]= useState(false)
+  const [detailDescExpanded,setDetailDescExpanded]= useState(false)
 
   const job = jobs.find(j=>j.id===selected)
   const F   = (k,v) => setForm(f=>({...f,[k]:v}))
@@ -74,7 +75,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
     const jobCands = candidates.filter(c=>c.jobId===job.id)
     return (
       <div>
-        <button className="btn btn-sm" onClick={() => { setSelected(null); setShowForm(false); setEditMode(false); setShowMoreCandidates(false) }} style={{ marginBottom:20 }}>
+        <button className="btn btn-sm" onClick={() => { setSelected(null); setShowForm(false); setEditMode(false); setShowMoreCandidates(false); setDetailDescExpanded(false) }} style={{ marginBottom:20 }}>
           <Icon name="arrowLeft" size={14} />{tc.back}
         </button>
         {showForm && editMode && renderJobForm(tj.editTitle)}
@@ -106,7 +107,22 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                 )}
               </div>
             </div>
-            {job.desc && <p style={{ fontSize:13, color:'#555', marginTop:14, lineHeight:1.75 }}>{job.desc}</p>}
+            {job.desc && (
+              <p style={{ fontSize:13, color:'#555', marginTop:14, lineHeight:1.75 }}>
+                {detailDescExpanded || job.desc.length <= 100
+                  ? job.desc
+                  : <>{job.desc.substring(0,100)}…</>
+                }
+                {job.desc.length > 100 && (
+                  <>{' '}
+                    <button type="button" onClick={() => setDetailDescExpanded(v=>!v)}
+                      style={{ color: detailDescExpanded?'#aaa':'#378ADD', background:'none', border:'none', cursor:'pointer', fontSize:13, padding:0, fontFamily:'inherit' }}>
+                      {detailDescExpanded ? (lang==='de'?'Weniger':'Less') : (lang==='de'?'Mehr lesen':'Read more')}
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
             {job.links?.length > 0 && (
               <div style={{ display:'flex', gap:7, marginTop:12, flexWrap:'wrap' }}>
                 {job.links.map((l,i) => (
