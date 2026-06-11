@@ -9,6 +9,7 @@ import JobsView       from './views/JobsView.jsx'
 import CandidatesView from './views/CandidatesView.jsx'
 import InterviewsView from './views/InterviewsView.jsx'
 import ArchiveView    from './views/ArchiveView.jsx'
+import NotesView      from './views/NotesView.jsx'
 import Sidebar        from './components/Sidebar.jsx'
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
   const [candidates, setCandidates] = useState([])
   const [interviews, setInterviews] = useState([])
   const [archives,   setArchives]   = useState([])
+  const [notesText,  setNotesText]  = useState('')
 
   async function handleLogin() {
     try {
@@ -48,8 +50,10 @@ export default function App() {
       loadCollection('candidates'),
       loadCollection('interviews'),
       loadCollection('archives'),
-    ]).then(([j, c, i, a]) => {
+      loadCollection('notes'),
+    ]).then(([j, c, i, a, n]) => {
       setJobs(j); setCandidates(c); setInterviews(i); setArchives(a)
+      setNotesText(n?.[0]?.text || '')
     }).finally(() => setLoading(false))
   }, [user])
 
@@ -58,6 +62,7 @@ export default function App() {
   const persistCandidates = useCallback(async next => { setCandidates(next); await saveCollection('candidates', next) }, [])
   const persistInterviews = useCallback(async next => { setInterviews(next); await saveCollection('interviews', next) }, [])
   const persistArchives   = useCallback(async next => { setArchives(next);   await saveCollection('archives',   next) }, [])
+  const persistNotes      = useCallback(async text => { setNotesText(text);  await saveCollection('notes', [{ text }]) }, [])
 
   // ── Archive a job (move job + its candidates + interviews into archives) ──
   const handleArchive = useCallback(async (jobId) => {
@@ -121,6 +126,7 @@ export default function App() {
         {view === 'candidates' && <CandidatesView {...shared} user={user} />}
         {view === 'interviews' && <InterviewsView {...shared} />}
         {view === 'archive'    && <ArchiveView    archives={archives} persistArchives={persistArchives} onRestore={handleRestore} />}
+        {view === 'notes'      && <NotesView      notes={notesText} persistNotes={persistNotes} />}
       </main>
     </div>
   )
