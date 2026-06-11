@@ -19,6 +19,7 @@ export default function Sidebar({ view, onNavigate, user, onLogout }) {
     { view: 'jobs',       label: t.nav.jobs,        icon: 'briefcase'  },
     { view: 'candidates', label: t.nav.candidates,  icon: 'users'      },
     { view: 'interviews', label: t.nav.interviews,  icon: 'calendar'   },
+    { view: 'notes',      label: lang==='de'?'Notizen':'Notes', icon: 'edit' },
     { view: 'archive',    label: t.nav.archive,     icon: 'archive'    },
   ]
 
