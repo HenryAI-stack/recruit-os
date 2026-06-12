@@ -83,7 +83,10 @@ export async function extractText(file) {
 }
 
 async function extractFromPDF(file) {
-  const pdfjsLib = await import('pdfjs-dist')
+  const mod = await import('pdfjs-dist')
+  // Handle both ESM namespace and CJS-wrapped default export
+  const pdfjsLib = mod.getDocument ? mod : (mod.default ?? mod)
+
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url
   ).href
@@ -100,8 +103,15 @@ async function extractFromPDF(file) {
 }
 
 async function extractFromDOCX(file) {
-  const mammoth = await import('mammoth')
-  const buffer  = await file.arrayBuffer()
-  const result  = await mammoth.extractRawText({ arrayBuffer: buffer })
+  const mod = await import('mammoth')
+  // mammoth is CJS — under Vite, named exports may be nested under .default
+  const mammoth = mod.extractRawText ? mod : (mod.default ?? mod)
+
+  if (typeof mammoth.extractRawText !== 'function') {
+    throw new Error('DOCX parser unavailable (mammoth.extractRawText missing)')
+  }
+
+  const buffer = await file.arrayBuffer()
+  const result = await mammoth.extractRawText({ arrayBuffer: buffer })
   return result.value
 }
