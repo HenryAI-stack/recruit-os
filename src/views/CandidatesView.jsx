@@ -159,6 +159,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
       onCandidateOpened?.()
     }
   }, [openCandidateId])
+  const [search,         setSearch]         = useState('')
   const [showForm,       setShowForm]       = useState(false)
   const [editCand,       setEditCand]       = useState(false)
   const [form,           setForm]           = useState(EMPTY)
@@ -180,9 +181,16 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
 
   const candidate = candidates.find(c=>c.id===selected)
   const filtered = candidates.filter(c => {
+    const q = search.toLowerCase()
+    const matchSearch = !q ||
+      `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
+      (c.email||'').toLowerCase().includes(q) ||
+      (c.phone||'').toLowerCase().includes(q) ||
+      (c.mobile||'').toLowerCase().includes(q) ||
+      (jobs.find(j=>j.id===c.jobId)?.title||'').toLowerCase().includes(q)
     const matchStatus = filter==='all' || c.status===filter
     const matchJob    = filterJob==='all' || c.jobId===filterJob
-    return matchStatus && matchJob
+    return matchSearch && matchStatus && matchJob
   })
   const F = (k,v) => {
     setForm(f=>({...f,[k]:v}))
@@ -627,6 +635,22 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         </button>
       </div>
       {showForm && !editCand && renderCandForm(tca.addTitle)}
+
+      {/* Search bar */}
+      <div style={{ position:'relative', marginBottom:14 }}>
+        <Icon name="search" size={14} color="#bbb" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
+        <input
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          placeholder={lang==='de' ? 'Name, E-Mail, Telefon, Stelle…' : 'Name, email, phone, position…'}
+          style={{ width:'100%', padding:'9px 12px 9px 36px', border:'1px solid #EBEBEA', borderRadius:9, fontSize:13, background:'#fff', fontFamily:'inherit' }}
+        />
+        {search && (
+          <button onClick={()=>setSearch('')} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', border:'none', background:'none', cursor:'pointer', color:'#aaa', display:'flex' }}>
+            <Icon name="x" size={14} color="#bbb" />
+          </button>
+        )}
+      </div>
 
       {/* Filters — job dropdown + status chips */}
       <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginBottom:16, alignItems:'center' }}>
