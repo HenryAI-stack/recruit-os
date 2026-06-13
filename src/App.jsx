@@ -130,7 +130,7 @@ export default function App() {
         {view === 'dashboard'  && <Dashboard     {...shared} onNavigate={setView} />}
         {view === 'jobs'       && <JobsView       {...shared} onArchive={handleArchive} onSelectCandidate={goToCandidate} />}
         {view === 'candidates' && <CandidatesView {...shared} user={user} openCandidateId={openCandidateId} onCandidateOpened={() => setOpenCandidateId(null)} />}
-        {view === 'interviews' && <InterviewsView {...shared} />}
+        {view === 'interviews' && <InterviewsView {...shared} onSelectCandidate={goToCandidate} />}
         {view === 'archive'    && <ArchiveView    archives={archives} persistArchives={persistArchives} onRestore={handleRestore} />}
         {view === 'notes'      && <NotesView      notes={notesText} persistNotes={persistNotes} />}
       </main>
