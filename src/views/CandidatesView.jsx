@@ -1,5 +1,5 @@
 // src/views/CandidatesView.jsx
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Badge        from '../components/Badge.jsx'
 import Icon         from '../components/Icon.jsx'
 import PhotoUpload  from '../components/PhotoUpload.jsx'
@@ -143,13 +143,22 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
   )
 }
 
-export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user }) {
+export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user, openCandidateId, onCandidateOpened }) {
   const { t, STATUS_DISPLAY, TYPE_DISPLAY, lang } = useT()
   const tc = t.common; const tca = t.candidates; const ti = t.interviews
 
   const [filter,         setFilter]         = useState('all')
   const [filterJob,      setFilterJob]      = useState('all')
   const [selected,       setSelected]       = useState(null)
+
+  // Open a candidate when navigated here from another view (e.g. Job Postings)
+  useEffect(() => {
+    if (openCandidateId) {
+      setSelected(openCandidateId)
+      setShowForm(false); setEditCand(false)
+      onCandidateOpened?.()
+    }
+  }, [openCandidateId])
   const [showForm,       setShowForm]       = useState(false)
   const [editCand,       setEditCand]       = useState(false)
   const [form,           setForm]           = useState(EMPTY)
