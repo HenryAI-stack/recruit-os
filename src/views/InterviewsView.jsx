@@ -44,7 +44,7 @@ function Chip({ label, active, onClick }) {
   )
 }
 
-export default function InterviewsView({ jobs, candidates, interviews, persistInterviews }) {
+export default function InterviewsView({ jobs, candidates, interviews, persistInterviews, onSelectCandidate }) {
   const { t, lang, TYPE_DISPLAY } = useT()
   const ti = t.interviews; const tc = t.common
 
@@ -150,7 +150,10 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
           <Avatar name={name} photo={c.photo} size={36} />
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-              <span style={{ fontSize:13, fontWeight:700 }}>{name}</span>
+              <span
+                onClick={() => onSelectCandidate?.(c.id)}
+                style={{ fontSize:13, fontWeight:700, color: onSelectCandidate ? '#1A56DB' : undefined, cursor: onSelectCandidate ? 'pointer' : 'default' }}
+              >{name}</span>
               <span style={{ fontSize:12, color:'#888' }}>— {TYPE_DISPLAY[iv.type]||iv.type}</span>
             </div>
             <div style={{ display:'flex', gap:12, fontSize:11, color:'#aaa', marginTop:3, flexWrap:'wrap' }}>
