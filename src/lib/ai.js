@@ -18,9 +18,18 @@ async function callAI(systemPrompt, userContent) {
       ],
     }),
   })
-  if (!res.ok) throw new Error(`OpenRouter ${res.status}`)
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '')
+    console.error('[ai.js] OpenRouter error response:', res.status, errBody)
+    throw new Error(`OpenRouter ${res.status}`)
+  }
   const data = await res.json()
-  return data.choices?.[0]?.message?.content?.trim() || null
+  const content = data?.choices?.[0]?.message?.content
+  if (typeof content !== 'string') {
+    console.error('[ai.js] Unexpected OpenRouter response shape:', data)
+    return null
+  }
+  return content.trim() || null
 }
 
 export async function improveText(text, lang) {
@@ -47,13 +56,20 @@ export async function extractCandidateInfo(resumeText, lang) {
     : `Extract info from this resume. Return ONLY this JSON (no markdown, no explanation): ${tpl}. Birthday: YYYY-MM-DD. notes = professional first impression 3-4 sentences.`
   const raw = await callAI(system, resumeText.slice(0, 6000))
   if (!raw) return null
+
+  let parsed = null
   try {
-    return JSON.parse(raw.replace(/```json|```/g,'').trim())
+    parsed = JSON.parse(raw.replace(/```json|```/g,'').trim())
   } catch {
     const m = raw.match(/\{[\s\S]*\}/)
-    if (m) try { return JSON.parse(m[0]) } catch {}
+    if (m) { try { parsed = JSON.parse(m[0]) } catch {} }
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    console.error('[ai.js] extractCandidateInfo: AI did not return a valid object. Raw response:', raw)
     return null
   }
+  return parsed
 }
 
 export async function generateInterviewQuestions(jobTitle, jobDesc, candidateNotes, lang) {
