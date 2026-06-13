@@ -83,9 +83,18 @@ export async function extractText(file) {
 }
 
 async function extractFromPDF(file) {
-  const mod = await import('pdfjs-dist')
-  // Handle both ESM namespace and CJS-wrapped default export
-  const pdfjsLib = mod.getDocument ? mod : (mod.default ?? mod)
+  let pdfjsLib
+  try {
+    const mod = await import('pdfjs-dist')
+    pdfjsLib = mod.getDocument ? mod
+             : mod.default?.getDocument ? mod.default
+             : mod.default?.default?.getDocument ? mod.default.default
+             : null
+    if (!pdfjsLib) throw new Error('pdfjs-dist: getDocument not found in module')
+  } catch (e) {
+    console.error('[resume.js] Failed to load pdfjs-dist:', e)
+    throw new Error(`PDF library load error: ${e.message}`)
+  }
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url
@@ -103,12 +112,17 @@ async function extractFromPDF(file) {
 }
 
 async function extractFromDOCX(file) {
-  const mod = await import('mammoth')
-  // mammoth is CJS — under Vite, named exports may be nested under .default
-  const mammoth = mod.extractRawText ? mod : (mod.default ?? mod)
-
-  if (typeof mammoth.extractRawText !== 'function') {
-    throw new Error('DOCX parser unavailable (mammoth.extractRawText missing)')
+  let mammoth
+  try {
+    const mod = await import('mammoth')
+    mammoth = mod.extractRawText ? mod
+            : mod.default?.extractRawText ? mod.default
+            : mod.default?.default?.extractRawText ? mod.default.default
+            : null
+    if (!mammoth) throw new Error('mammoth: extractRawText not found in module')
+  } catch (e) {
+    console.error('[resume.js] Failed to load mammoth:', e)
+    throw new Error(`DOCX library load error: ${e.message}`)
   }
 
   const buffer = await file.arrayBuffer()
