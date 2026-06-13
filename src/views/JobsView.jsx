@@ -6,7 +6,7 @@ import { useT }    from '../lib/i18n.jsx'
 
 const EMPTY = { title:'', dept:'', location:'', desc:'', links:[], isOpen:true }
 
-export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive }) {
+export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive, onSelectCandidate }) {
   const { t, lang, TYPE_DISPLAY } = useT()
   const tj = t.jobs; const tc = t.common
 
@@ -165,9 +165,9 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                 </thead>
                 <tbody>
                   {ranked.map((c, i) => (
-                    <tr key={c.id}>
+                    <tr key={c.id} onClick={() => onSelectCandidate?.(c.id)} style={{ cursor: onSelectCandidate ? 'pointer' : 'default' }}>
                       <td style={{ fontSize:18, textAlign:'center' }}>{medals[i]}</td>
-                      <td style={{ fontWeight:600 }}>{c.firstName} {c.lastName}</td>
+                      <td style={{ fontWeight:600, color: onSelectCandidate ? '#1A56DB' : undefined }}>{c.firstName} {c.lastName}</td>
                       <td><Badge status={c.status} /></td>
                       <td>
                         {c.ratedIvs.length > 0
@@ -251,8 +251,8 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                     </thead>
                     <tbody>
                       {others.map(c => (
-                        <tr key={c.id}>
-                          <td style={{ fontWeight:500 }}>{c.firstName} {c.lastName}</td>
+                        <tr key={c.id} onClick={() => onSelectCandidate?.(c.id)} style={{ cursor: onSelectCandidate ? 'pointer' : 'default' }}>
+                          <td style={{ fontWeight:500, color: onSelectCandidate ? '#1A56DB' : undefined }}>{c.firstName} {c.lastName}</td>
                           <td><Badge status={c.status} /></td>
                           <td>
                             {c.ratedIvs.length > 0
