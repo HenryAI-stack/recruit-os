@@ -17,6 +17,12 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authError,   setAuthError]   = useState(null)
   const [view,        setView]        = useState('dashboard')
+  const [openCandidateId, setOpenCandidateId] = useState(null)
+
+  function goToCandidate(id) {
+    setOpenCandidateId(id)
+    setView('candidates')
+  }
   const [loading,     setLoading]     = useState(false)
 
   const [jobs,       setJobs]       = useState([])
@@ -122,8 +128,8 @@ export default function App() {
       <Sidebar view={view} onNavigate={setView} user={user} onLogout={logout} />
       <main style={{ flex:1, overflowY:'auto', padding:'28px 32px', background:'#f5f5f4' }}>
         {view === 'dashboard'  && <Dashboard     {...shared} onNavigate={setView} />}
-        {view === 'jobs'       && <JobsView       {...shared} onArchive={handleArchive} />}
-        {view === 'candidates' && <CandidatesView {...shared} user={user} />}
+        {view === 'jobs'       && <JobsView       {...shared} onArchive={handleArchive} onSelectCandidate={goToCandidate} />}
+        {view === 'candidates' && <CandidatesView {...shared} user={user} openCandidateId={openCandidateId} onCandidateOpened={() => setOpenCandidateId(null)} />}
         {view === 'interviews' && <InterviewsView {...shared} />}
         {view === 'archive'    && <ArchiveView    archives={archives} persistArchives={persistArchives} onRestore={handleRestore} />}
         {view === 'notes'      && <NotesView      notes={notesText} persistNotes={persistNotes} />}
