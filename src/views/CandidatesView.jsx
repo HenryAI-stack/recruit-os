@@ -201,13 +201,15 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
 
   // Called when ResumeUpload extracts structured data from CV
   async function handleDataExtracted(data) {
-    // Merge extracted fields into candidate record (only overwrite if value present)
+    if (!data || typeof data !== 'object') return
     const merge = {}
     const fields = ['firstName','lastName','email','phone','mobile','address','birthday','notes']
-    fields.forEach(k => { if (data[k] && data[k].trim()) merge[k] = data[k].trim() })
+    fields.forEach(k => {
+      const v = data[k]
+      if (typeof v === 'string' && v.trim()) merge[k] = v.trim()
+    })
     const next = candidates.map(c => c.id===selected ? { ...c, ...merge } : c)
     await persistCandidates(next)
-    // Also update form if currently editing
     if (showForm && editCand) {
       setForm(f => ({ ...f, ...merge }))
       if (merge.notes) { notesRef.current = merge.notes; setNotesAiApplied(false) }
@@ -316,9 +318,16 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         const text = await extractText(pendingResume.file)
         if (!text || text.trim().length < 50) throw new Error(lang==='de'?'Text konnte nicht gelesen werden':'Could not read text from file')
         const data = await extractCandidateInfo(text, lang)
-        if (!data) throw new Error(lang==='de'?'KI konnte keine Daten extrahieren':'AI could not extract data')
+        if (!data || typeof data !== 'object') throw new Error(lang==='de'?'KI konnte keine Daten extrahieren':'AI could not extract data')
         const fields = ['firstName','lastName','email','phone','mobile','address','birthday','notes']
-        fields.forEach(k => { if (data[k]?.trim()) { setForm(f=>({...f,[k]:data[k].trim()})); if(k==='notes') notesRef.current=data[k].trim() } })
+        fields.forEach(k => {
+          const v = data[k]
+          if (typeof v === 'string' && v.trim()) {
+            const val = v.trim()
+            setForm(f=>({...f,[k]:val}))
+            if (k==='notes') notesRef.current = val
+          }
+        })
       } catch(e) { setCvError(`${lang==='de'?'Fehler':'Error'}: ${e.message}`) }
       finally { setCvExtracting(false) }
     }
