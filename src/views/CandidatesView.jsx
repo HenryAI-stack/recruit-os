@@ -12,7 +12,10 @@ import { saveResume, extractText } from '../lib/resume.js'
 const STATUSES   = ['Eingegangen','Erstgespräch','Technisches Gespräch','Ausgewählt','Abgelehnt']
 const EMPTY = { firstName:'',lastName:'',email:'',phone:'',mobile:'',address:'',birthday:'',jobId:'',status:'Eingegangen',notes:'',appliedAt:'',hasResume:false,resumeName:null }
 const AV_COLORS  = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
-const ivEmpty = (displayName='') => ({ type:'Erstgespräch', scheduledAt:'', interviewer:displayName, done:false, feedback:'', rating:0 })
+const ivEmpty = (displayName='') => ({ type:'Erstgespräch', scheduledAt:'', interviewer:displayName, ivStatus:'planned', done:false, feedback:'', rating:0 })
+
+// Backward-compatible status helper — old records use done:boolean, new ones use ivStatus string
+function getIvStatus(iv) { return iv.ivStatus || (iv.done ? 'done' : 'planned') }
 
 // Auto-status logic: interview type → candidate status (both DE + EN keys)
 const STATUS_RANK = { 'Eingegangen':0,'Erstgespräch':1,'Technisches Gespräch':2,'Ausgewählt':99,'Abgelehnt':99 }
@@ -96,7 +99,7 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <Field label={ti.interviewer} value={f.interviewer}  onChange={v=>F('interviewer',v)} placeholder="Name" />
-        <Field label={ti.statusLabel} value={f.done?'1':'0'} onChange={v=>F('done',v==='1')}  select={[{v:'0',l:ti.statusPlanned},{v:'1',l:ti.statusDone}]} />
+        <Field label={ti.statusLabel} value={f.ivStatus||'planned'} onChange={v=>F('ivStatus',v)} select={[{v:'planned',l:ti.statusPlanned},{v:'done',l:ti.statusDone},{v:'noshow',l:ti.statusNoShow}]} />
       </div>
 
       {/* Feedback field with AI improvement button */}
@@ -296,9 +299,10 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
   }
   async function handleSaveIv(data) {
     const isNew = !editingIvId
+    const normalised = { ...data, ivStatus: data.ivStatus||'planned', done: (data.ivStatus||'planned')==='done' }
     const next = isNew
-      ? [...interviews,{...data,id:crypto.randomUUID(),candidateId:selected,createdAt:new Date().toISOString()}]
-      : interviews.map(i=>i.id===editingIvId?{...i,...data}:i)
+      ? [...interviews,{...normalised,id:crypto.randomUUID(),candidateId:selected,createdAt:new Date().toISOString()}]
+      : interviews.map(i=>i.id===editingIvId?{...i,...normalised}:i)
     await persistInterviews(next)
 
     // Auto-upgrade candidate status when a new interview is registered
@@ -592,16 +596,26 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
                   onSave={handleSaveIv} onCancel={() => setEditingIvId(null)} t={t} />
               : (
                 <div style={{ display:'flex', gap:12, marginBottom:14, padding:'14px 16px', background:'#fff', border:'1px solid #EBEBEA', borderRadius:12, boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
-                  <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, marginTop:1, background:iv.done?'#ECFDF5':'#EBF4FF', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <Icon name={iv.done?'check':'clock'} size={14} color={iv.done?'#10B981':'#3B82F6'} />
-                  </div>
+                  {(() => {
+                    const s = getIvStatus(iv)
+                    const bg  = s==='done'?'#ECFDF5':s==='noshow'?'#FEF2F2':'#EBF4FF'
+                    const ico = s==='done'?'check':s==='noshow'?'x':'clock'
+                    const col = s==='done'?'#10B981':s==='noshow'?'#EF4444':'#3B82F6'
+                    return <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, marginTop:1, background:bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <Icon name={ico} size={14} color={col} />
+                    </div>
+                  })()}
                   <div style={{ flex:1 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:6 }}>
                       <span style={{ fontSize:13, fontWeight:700 }}>{TYPE_DISPLAY[iv.type]||iv.type}</span>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ fontSize:11, padding:'2px 8px', borderRadius:100, fontWeight:600, background:iv.done?'#ECFDF5':'#EBF4FF', color:iv.done?'#065F46':'#1A56DB' }}>
-                          {iv.done ? ti.statusDone : ti.statusPlanned}
-                        </span>
+                        {(() => {
+                          const s = getIvStatus(iv)
+                          const bg  = s==='done'?'#ECFDF5':s==='noshow'?'#FEF2F2':'#EBF4FF'
+                          const col = s==='done'?'#065F46':s==='noshow'?'#991B1B':'#1A56DB'
+                          const lbl = s==='done'?ti.statusDone:s==='noshow'?ti.statusNoShow:ti.statusPlanned
+                          return <span style={{ fontSize:11, padding:'2px 8px', borderRadius:100, fontWeight:600, background:bg, color:col }}>{lbl}</span>
+                        })()}
                         <button className="btn btn-ghost btn-icon" onClick={() => { setEditingIvId(iv.id); setShowIvForm(false) }}><Icon name="edit"  size={13} color="#aaa" /></button>
                         <button className="btn btn-ghost btn-icon" onClick={() => handleDeleteIv(iv.id)}><Icon name="trash" size={13} color="#f87171" /></button>
                       </div>
