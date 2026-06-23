@@ -30,7 +30,9 @@ function Field({ label,value,onChange,placeholder,multiline,select,type }) {
   )
 }
 
-// Pill-style filter chip
+// Backward-compatible: old records use done:boolean, new ones use ivStatus string
+function getIvStatus(iv) { return iv.ivStatus || (iv.done ? 'done' : 'planned') }
+
 function Chip({ label, active, onClick }) {
   return (
     <button onClick={onClick} style={{
@@ -103,7 +105,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
         (iv.interviewer||'').toLowerCase().includes(q) ||
         (j?.title||'').toLowerCase().includes(q) ||
         (iv.feedback||'').toLowerCase().includes(q)
-      const matchStatus = filterStatus==='all' || (filterStatus==='planned'?!iv.done:iv.done)
+      const matchStatus = filterStatus==='all' || getIvStatus(iv)===filterStatus
       const matchType   = filterType==='all'   || iv.type===filterType
       const matchJob    = filterJob==='all'    || iv.jobId===filterJob
       const matchRating = filterRating === 0 || iv.rating >= filterRating
@@ -111,19 +113,21 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
     }).sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0))
   }, [interviews, candidates, jobs, search, filterStatus, filterType, filterJob])
 
-  const planned   = filtered.filter(i=>!i.done)
-  const completed = filtered.filter(i=> i.done)
+  const planned   = filtered.filter(i=>getIvStatus(i)==='planned')
+  const completed = filtered.filter(i=>getIvStatus(i)==='done')
+  const noshow    = filtered.filter(i=>getIvStatus(i)==='noshow')
 
   // ── Edit handlers ────────────────────────────────────────────────────────
   function startEdit(iv) {
-    setEditForm({ type:iv.type, scheduledAt:iv.scheduledAt||'', interviewer:iv.interviewer||'', done:iv.done, feedback:iv.feedback||'', rating:iv.rating||0 })
+    setEditForm({ type:iv.type, scheduledAt:iv.scheduledAt||'', interviewer:iv.interviewer||'', ivStatus:getIvStatus(iv), done:iv.done, feedback:iv.feedback||'', rating:iv.rating||0 })
     feedbackRef.current = iv.feedback || ''
     setFeedbackAiApplied(false); setFeedbackError(null)
     setEditingId(iv.id)
   }
   async function handleSave() {
     setSaving(true)
-    await persistInterviews(interviews.map(i=>i.id===editingId?{...i,...editForm}:i))
+    const normalised = { ...editForm, ivStatus: editForm.ivStatus||'planned', done: (editForm.ivStatus||'planned')==='done' }
+    await persistInterviews(interviews.map(i=>i.id===editingId?{...i,...normalised}:i))
     setEditingId(null); setSaving(false)
   }
   async function handleDelete(id) {
@@ -164,10 +168,13 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
             <Badge status={c.status} />
-            <span style={{ fontSize:11, padding:'2px 8px', borderRadius:100, fontWeight:600, whiteSpace:'nowrap',
-              background: iv.done?'#ECFDF5':'#EBF4FF', color: iv.done?'#065F46':'#1A56DB' }}>
-              {iv.done ? ti.statusDone : ti.statusPlanned}
-            </span>
+            {(() => {
+                const s = getIvStatus(iv)
+                const bg  = s==='done'?'#ECFDF5':s==='noshow'?'#FEF2F2':'#EBF4FF'
+                const col = s==='done'?'#065F46':s==='noshow'?'#991B1B':'#1A56DB'
+                const lbl = s==='done'?ti.statusDone:s==='noshow'?ti.statusNoShow:ti.statusPlanned
+                return <span style={{ fontSize:11, padding:'2px 8px', borderRadius:100, fontWeight:600, background:bg, color:col, whiteSpace:'nowrap' }}>{lbl}</span>
+              })()}
             <button className="btn btn-ghost btn-icon" title={tc.edit} onClick={() => isEditing ? setEditingId(null) : startEdit(iv)}>
               <Icon name={isEditing?'x':'edit'} size={14} color="#aaa" />
             </button>
@@ -194,7 +201,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <Field label={ti.interviewer} value={editForm.interviewer}  onChange={v=>F('interviewer',v)}  placeholder="Name" />
-              <Field label={ti.statusLabel} value={editForm.done?'1':'0'} onChange={v=>F('done',v==='1')}   select={[{v:'0',l:ti.statusPlanned},{v:'1',l:ti.statusDone}]} />
+              <Field label={ti.statusLabel} value={editForm.ivStatus||'planned'} onChange={v=>F('ivStatus',v)} select={[{v:'planned',l:ti.statusPlanned},{v:'done',l:ti.statusDone},{v:'noshow',l:ti.statusNoShow}]} />
             </div>
             {/* Feedback with AI improvement */}
             <div className="field">
@@ -242,7 +249,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
     )
   }
 
-  const hasResults = planned.length > 0 || completed.length > 0
+  const hasResults = planned.length > 0 || completed.length > 0 || noshow.length > 0
 
   return (
     <div>
@@ -251,7 +258,7 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
           <h1 className="page-title">{ti.title}</h1>
           <p className="page-sub">
             {interviews.length > 0
-              ? ti.subtitle.replace('{planned}',interviews.filter(i=>!i.done).length).replace('{done}',interviews.filter(i=>i.done).length)
+              ? ti.subtitle.replace('{planned}',interviews.filter(i=>getIvStatus(i)==='planned').length).replace('{done}',interviews.filter(i=>getIvStatus(i)==='done').length)
               : ti.noInterviewsSub}
           </p>
         </div>
@@ -279,9 +286,10 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:18, alignItems:'center' }}>
 
             {/* Status filter */}
-            <Chip label={tc.all}         active={filterStatus==='all'}     onClick={()=>setFilterStatus('all')} />
+            <Chip label={tc.all}           active={filterStatus==='all'}     onClick={()=>setFilterStatus('all')} />
             <Chip label={ti.statusPlanned} active={filterStatus==='planned'} onClick={()=>setFilterStatus('planned')} />
             <Chip label={ti.statusDone}    active={filterStatus==='done'}    onClick={()=>setFilterStatus('done')} />
+            <Chip label={ti.statusNoShow}  active={filterStatus==='noshow'}  onClick={()=>setFilterStatus('noshow')} />
 
             {/* Separator */}
             {(allTypes.length > 0 || allJobs.length > 0) && (
@@ -386,6 +394,18 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
             </span>
           </div>
           {completed.map(iv=><div key={iv.id}>{renderIvCard(iv)}</div>)}
+        </div>
+      )}
+
+      {noshow.length>0 && (
+        <div style={{ marginTop: completed.length>0 ? 24 : 0 }}>
+          <div className="section-header">
+            <span className="section-title" style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <Icon name="x" size={14} color="#EF4444" />{ti.statusNoShow}
+              <span style={{ fontSize:11, color:'#aaa', fontWeight:400 }}>({noshow.length})</span>
+            </span>
+          </div>
+          {noshow.map(iv=><div key={iv.id}>{renderIvCard(iv)}</div>)}
         </div>
       )}
     </div>
