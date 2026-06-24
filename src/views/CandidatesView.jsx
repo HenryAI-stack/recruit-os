@@ -36,8 +36,28 @@ function deriveStatus(ivType, currentStatus) {
 }
 
 function Avatar({ name, photo, size=34 }) {
-  if (photo) return <img src={photo} alt="" style={{ width:size,height:size,borderRadius:'50%',objectFit:'cover',flexShrink:0 }} />
+  const [hovered, setHovered] = useState(false)
   const ini = name.split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2)
+
+  if (photo) return (
+    <div style={{ position:'relative', flexShrink:0, width:size, height:size }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <img src={photo} alt="" style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', cursor:'zoom-in', display:'block' }} />
+      {hovered && (
+        <div style={{
+          position:'absolute', bottom: size + 6, left:'50%', transform:'translateX(-50%)',
+          zIndex:50, pointerEvents:'none',
+          boxShadow:'0 8px 24px rgba(0,0,0,.18)', borderRadius:10, overflow:'hidden',
+          border:'2px solid #fff',
+        }}>
+          <img src={photo} alt="" style={{ width:120, height:120, objectFit:'cover', display:'block' }} />
+        </div>
+      )}
+    </div>
+  )
+
   const [bg,color] = AV_COLORS[name.charCodeAt(0)%AV_COLORS.length]
   return <div style={{ width:size,height:size,borderRadius:'50%',background:bg,color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.34,fontWeight:700,flexShrink:0 }}>{ini}</div>
 }
@@ -146,7 +166,7 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
   )
 }
 
-export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user, openCandidateId, onCandidateOpened }) {
+export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user, openCandidateId, onCandidateOpened, fromView, onBack }) {
   const { t, STATUS_DISPLAY, TYPE_DISPLAY, lang } = useT()
   const tc = t.common; const tca = t.candidates; const ti = t.interviews
 
@@ -457,8 +477,14 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
     const editIv= interviews.find(i=>i.id===editingIvId)
     return (
       <div>
-        <button className="btn btn-sm" onClick={() => { setSelected(null); setShowForm(false); setEditCand(false); setShowIvForm(false); setEditingIvId(null) }} style={{ marginBottom:20 }}>
-          <Icon name="arrowLeft" size={14} />{tc.back}
+        <button className="btn btn-sm" onClick={() => {
+          setSelected(null); setShowForm(false); setEditCand(false); setShowIvForm(false); setEditingIvId(null)
+          if (fromView) onBack(fromView)
+        }} style={{ marginBottom:20 }}>
+          <Icon name="arrowLeft" size={14} />
+          {fromView === 'jobs' ? (lang==='de'?'Zurück zu Stellenangeboten':'Back to Jobs') :
+           fromView === 'interviews' ? (lang==='de'?'Zurück zu Gesprächen':'Back to Interviews') :
+           tc.back}
         </button>
         {showForm && editCand && renderCandForm(tca.editTitle)}
         {!editCand && (
