@@ -53,16 +53,19 @@ export default function ResumeUpload({ candidateId, hasResume, onResumeChange, o
     finally { setExtracting(false) }
   }
 
-  async function handleDownload() {
+  async function handleView() {
     setError(null)
     try {
       const resume = await loadResume(candidateId)
       if (!resume) return
-      const url = URL.createObjectURL(new Blob([resume.bytes]))
-      const a = document.createElement('a')
-      a.href = url; a.download = resume.filename; a.click()
-      URL.revokeObjectURL(url)
-    } catch(e) { setError(de ? 'Fehler beim Laden.' : 'Error loading resume.') }
+      const ext  = resume.filename.split('.').pop().toLowerCase()
+      const mime = ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      const blob = new Blob([resume.bytes], { type: mime })
+      const url  = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      // Revoke after a delay so the tab has time to load
+      setTimeout(() => URL.revokeObjectURL(url), 30000)
+    } catch(e) { setError(de ? 'Fehler beim Öffnen.' : 'Error opening file.') }
   }
 
   async function handleDelete() {
@@ -109,7 +112,23 @@ export default function ResumeUpload({ candidateId, hasResume, onResumeChange, o
         )}
 
         {hasResume && (
-          <button style={btn} onClick={handleDownload} disabled={extracting}>
+          <button style={{ ...btn, background:'#EBF4FF', borderColor:'#B5D4F4', color:'#1A56DB' }} onClick={handleView} disabled={extracting}>
+            <Icon name="externalLink" size={13} color="#1A56DB"/>{de?'Im Browser öffnen':'View in browser'}
+          </button>
+        )}
+
+        {hasResume && (
+          <button style={btn} onClick={async () => {
+            setError(null)
+            try {
+              const resume = await loadResume(candidateId)
+              if (!resume) return
+              const url = URL.createObjectURL(new Blob([resume.bytes]))
+              const a = document.createElement('a')
+              a.href = url; a.download = resume.filename; a.click()
+              URL.revokeObjectURL(url)
+            } catch(e) { setError(de ? 'Fehler beim Laden.' : 'Error loading resume.') }
+          }} disabled={extracting}>
             <Icon name="save" size={13} color="#555"/>{de?'Herunterladen':'Download'}
           </button>
         )}
