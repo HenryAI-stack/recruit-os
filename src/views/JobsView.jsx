@@ -4,6 +4,14 @@ import Badge       from '../components/Badge.jsx'
 import Icon        from '../components/Icon.jsx'
 import { useT }    from '../lib/i18n.jsx'
 
+const AV_COLORS = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
+function Avatar({ name, photo, size=28 }) {
+  if (photo) return <img src={photo} alt="" style={{ width:size,height:size,borderRadius:'50%',objectFit:'cover',flexShrink:0 }} />
+  const ini = name.split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2)
+  const [bg,color] = AV_COLORS[name.charCodeAt(0)%AV_COLORS.length]
+  return <div style={{ width:size,height:size,borderRadius:'50%',background:bg,color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.34,fontWeight:700,flexShrink:0 }}>{ini}</div>
+}
+
 const EMPTY = { title:'', dept:'', location:'', desc:'', links:[], isOpen:true }
 
 export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive, onSelectCandidate }) {
@@ -167,7 +175,12 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                   {ranked.map((c, i) => (
                     <tr key={c.id} onClick={() => onSelectCandidate?.(c.id)} style={{ cursor: onSelectCandidate ? 'pointer' : 'default' }}>
                       <td style={{ fontSize:18, textAlign:'center' }}>{medals[i]}</td>
-                      <td style={{ fontWeight:600, color: onSelectCandidate ? '#1A56DB' : undefined }}>{c.firstName} {c.lastName}</td>
+                      <td style={{ fontWeight:600, color: onSelectCandidate ? '#1A56DB' : undefined }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <Avatar name={`${c.firstName} ${c.lastName}`} photo={c.photo} size={28} />
+                          {c.firstName} {c.lastName}
+                        </div>
+                      </td>
                       <td><Badge status={c.status} /></td>
                       <td>
                         {c.ratedIvs.length > 0
@@ -252,7 +265,12 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                     <tbody>
                       {others.map(c => (
                         <tr key={c.id} onClick={() => onSelectCandidate?.(c.id)} style={{ cursor: onSelectCandidate ? 'pointer' : 'default' }}>
-                          <td style={{ fontWeight:500, color: onSelectCandidate ? '#1A56DB' : undefined }}>{c.firstName} {c.lastName}</td>
+                          <td style={{ fontWeight:500, color: onSelectCandidate ? '#1A56DB' : undefined }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                              <Avatar name={`${c.firstName} ${c.lastName}`} photo={c.photo} size={28} />
+                              {c.firstName} {c.lastName}
+                            </div>
+                          </td>
                           <td><Badge status={c.status} /></td>
                           <td>
                             {c.ratedIvs.length > 0
