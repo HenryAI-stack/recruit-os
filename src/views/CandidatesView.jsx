@@ -47,7 +47,7 @@ function Avatar({ name, photo, size=34 }) {
       <img src={photo} alt="" style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', cursor:'zoom-in', display:'block' }} />
       {hovered && (
         <div style={{
-          position:'absolute', bottom: size + 6, left:'50%', transform:'translateX(-50%)',
+          position:'absolute', top:'50%', left: size + 10, transform:'translateY(-50%)',
           zIndex:50, pointerEvents:'none',
           boxShadow:'0 8px 24px rgba(0,0,0,.18)', borderRadius:10, overflow:'hidden',
           border:'2px solid #fff',
