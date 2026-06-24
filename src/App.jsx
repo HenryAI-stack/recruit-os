@@ -18,8 +18,10 @@ export default function App() {
   const [authError,   setAuthError]   = useState(null)
   const [view,        setView]        = useState('dashboard')
   const [openCandidateId, setOpenCandidateId] = useState(null)
+  const [fromView,        setFromView]        = useState(null)
 
   function goToCandidate(id) {
+    setFromView(view)   // remember where we came from
     setOpenCandidateId(id)
     setView('candidates')
   }
@@ -129,7 +131,7 @@ export default function App() {
       <main style={{ flex:1, overflowY:'auto', padding:'28px 32px', background:'#f5f5f4' }}>
         {view === 'dashboard'  && <Dashboard     {...shared} onNavigate={setView} />}
         {view === 'jobs'       && <JobsView       {...shared} onArchive={handleArchive} onSelectCandidate={goToCandidate} />}
-        {view === 'candidates' && <CandidatesView {...shared} user={user} openCandidateId={openCandidateId} onCandidateOpened={() => setOpenCandidateId(null)} />}
+        {view === 'candidates' && <CandidatesView {...shared} user={user} openCandidateId={openCandidateId} onCandidateOpened={() => setOpenCandidateId(null)} fromView={fromView} onBack={(v) => { setFromView(null); setView(v || 'candidates') }} />}
         {view === 'interviews' && <InterviewsView {...shared} onSelectCandidate={goToCandidate} />}
         {view === 'archive'    && <ArchiveView    archives={archives} persistArchives={persistArchives} onRestore={handleRestore} />}
         {view === 'notes'      && <NotesView      notes={notesText} persistNotes={persistNotes} />}
