@@ -15,7 +15,12 @@ const AV_COLORS  = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#924
 const ivEmpty = (displayName='') => ({ type:'Erstgespräch', scheduledAt:'', interviewer:displayName, ivStatus:'planned', done:false, feedback:'', rating:0 })
 
 // Backward-compatible status helper — old records use done:boolean, new ones use ivStatus string
-function getIvStatus(iv) { return iv.ivStatus || (iv.done ? 'done' : 'planned') }
+function getIvStatus(iv) {
+  if (iv.ivStatus === 'noshow') return 'noshow'
+  if (iv.ivStatus === 'done')   return 'done'
+  if (iv.ivStatus === 'planned') return 'planned'
+  return iv.done ? 'done' : 'planned'
+}
 
 // Auto-status logic: interview type → candidate status (both DE + EN keys)
 const STATUS_RANK = { 'Eingegangen':0,'Erstgespräch':1,'Technisches Gespräch':2,'Ausgewählt':99,'Abgelehnt':99 }
