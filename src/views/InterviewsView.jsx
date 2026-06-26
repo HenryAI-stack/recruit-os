@@ -243,9 +243,18 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
               {feedbackError && <p style={{ fontSize:11, color:'#EF4444', marginTop:4 }}>{feedbackError}</p>}
             </div>
             <Field label={ti.rating} value={String(editForm.rating)} onChange={v=>F('rating',Number(v))} select={ratingOpts} />
+
+            {/* Mandatory rating warning */}
+            {(editForm.ivStatus||'planned') === 'done' && (editForm.rating||0) === 0 && (
+              <p style={{ fontSize:11, color:'#E24B4A', marginBottom:4, display:'flex', alignItems:'center', gap:4 }}>
+                ⚠ {lang==='de' ? 'Bewertung ist bei abgeschlossenen Gesprächen erforderlich.' : 'Rating is required for completed interviews.'}
+              </p>
+            )}
+
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
               <button className="btn btn-sm" onClick={()=>setEditingId(null)}>{tc.cancel}</button>
-              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+              <button className="btn btn-primary btn-sm" onClick={handleSave}
+                disabled={saving || ((editForm.ivStatus||'planned') === 'done' && (editForm.rating||0) === 0)}>
                 <Icon name="save" size={13} color="#fff" />{saving?tc.saving:tc.save}
               </button>
             </div>
