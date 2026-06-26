@@ -161,9 +161,19 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
 
       <Field label={ti.rating} value={String(f.rating)} onChange={v=>F('rating',Number(v))} select={ratingOpts} />
+
+      {/* Mandatory rating warning */}
+      {(f.ivStatus||'planned') === 'done' && f.rating === 0 && (
+        <p style={{ fontSize:11, color:'#E24B4A', marginBottom:8, display:'flex', alignItems:'center', gap:4 }}>
+          ⚠ {lang==='de' ? 'Bewertung ist bei abgeschlossenen Gesprächen erforderlich.' : 'Rating is required for completed interviews.'}
+        </p>
+      )}
+
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
         <button className="btn btn-sm" onClick={onCancel}>{tc.cancel}</button>
-        <button className="btn btn-primary btn-sm" disabled={improving} onClick={() => onSave({...f, jobId})}>
+        <button className="btn btn-primary btn-sm"
+          disabled={improving || ((f.ivStatus||'planned') === 'done' && f.rating === 0)}
+          onClick={() => onSave({...f, jobId})}>
           <Icon name="save" size={13} color="#fff" />{tc.save}
         </button>
       </div>
