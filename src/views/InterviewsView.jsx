@@ -30,8 +30,14 @@ function Field({ label,value,onChange,placeholder,multiline,select,type }) {
   )
 }
 
-// Backward-compatible: old records use done:boolean, new ones use ivStatus string
-function getIvStatus(iv) { return iv.ivStatus || (iv.done ? 'done' : 'planned') }
+// Backward-compatible: new records use ivStatus string, old ones use done:boolean
+// Must check for non-empty string — empty string is falsy and would fall through incorrectly
+function getIvStatus(iv) {
+  if (iv.ivStatus === 'noshow') return 'noshow'
+  if (iv.ivStatus === 'done')   return 'done'
+  if (iv.ivStatus === 'planned') return 'planned'
+  return iv.done ? 'done' : 'planned'
+}
 
 function Chip({ label, active, onClick }) {
   return (
