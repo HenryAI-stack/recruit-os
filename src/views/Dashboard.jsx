@@ -19,7 +19,7 @@ function Avatar({ name, photo, size=34 }) {
   return <div style={{ width:size,height:size,borderRadius:'50%',background:bg,color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.34,fontWeight:700,flexShrink:0 }}>{ini}</div>
 }
 
-export default function Dashboard({ jobs, candidates, interviews, onNavigate }) {
+export default function Dashboard({ jobs, candidates, interviews, onNavigate, onSelectCandidate }) {
   const { t } = useT()
   const td = t.dashboard
 
@@ -32,7 +32,7 @@ export default function Dashboard({ jobs, candidates, interviews, onNavigate }) 
   const stats = [
     { label:td.openJobs,    value:openJobs,          sub:td.ofTotal.replace('{n}',jobs.length),        icon:'briefcase' },
     { label:td.candidates,  value:candidates.length, sub:td.activeProcess,                              icon:'users'     },
-    { label:td.interviews,  value:doneIv,            sub:td.ofTotal.replace('{n}',interviews.length),   icon:'calendar'  },
+    { label:td.interviews,  value:doneIv,            sub:td.ofTotalScheduled.replace('{n}',interviews.length), icon:'calendar'  },
     { label:td.selected,    value:selected,          sub:td.candidates_plural,                          icon:'check', color:'#10B981' },
   ]
 
@@ -102,7 +102,10 @@ export default function Dashboard({ jobs, candidates, interviews, onNavigate }) 
                   const c = candidates.find(x=>x.id===iv.candidateId)
                   return (
                     <div key={iv.id} style={{ padding:'11px 14px', borderBottom:i<upcoming.length-1?'1px solid #F3F3F1':'none' }}>
-                      <div style={{ fontSize:13, fontWeight:600 }}>{c?.firstName} {c?.lastName}</div>
+                      <div
+                        onClick={() => c && onSelectCandidate?.(c.id, iv.jobId)}
+                        style={{ fontSize:13, fontWeight:600, color: c && onSelectCandidate ? '#1A56DB' : undefined, cursor: c && onSelectCandidate ? 'pointer' : 'default', display:'inline-block' }}
+                      >{c?.firstName} {c?.lastName}</div>
                       <div style={{ display:'flex', gap:10, fontSize:11, color:'#aaa', marginTop:3 }}>
                         <span style={{ display:'flex',alignItems:'center',gap:3 }}><Icon name="calendar" size={11} color="#ccc" />{iv.scheduledAt?.replace('T',' ').slice(0,16)}</span>
                         <span>{iv.type}</span>
