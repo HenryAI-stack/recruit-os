@@ -12,6 +12,18 @@ function Avatar({ name, photo, size=28 }) {
   return <div style={{ width:size,height:size,borderRadius:'50%',background:bg,color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.34,fontWeight:700,flexShrink:0 }}>{ini}</div>
 }
 
+function StatPill({ icon, value, label, color, bg }) {
+  return (
+    <div style={{ background:bg, borderRadius:8, padding:'6px 4px', textAlign:'center' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:3, marginBottom:2 }}>
+        <Icon name={icon} size={11} color={color} />
+        <span style={{ fontSize:14, fontWeight:700, color }}>{value}</span>
+      </div>
+      <div style={{ fontSize:9, color, opacity:.8, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{label}</div>
+    </div>
+  )
+}
+
 const EMPTY = { title:'', dept:'', location:'', desc:'', links:[], isOpen:true }
 
 export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive, onSelectCandidate, returnToJobId, onReturnConsumed }) {
@@ -150,6 +162,14 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                 ))}
               </div>
             )}
+
+            {/* Stats row */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginTop:16 }}>
+              <StatPill icon="users"    value={jobCands.length}                                                              label={lang==='de'?'Gesamt':'Total'}             color="#555"    bg="#F7F7F5" />
+              <StatPill icon="calendar" value={jobCands.filter(c=>['Erstgespräch','First Interview'].includes(c.status)).length} label={lang==='de'?'Erstgespräch':'1st Interview'} color="#92400E" bg="#FEF3C7" />
+              <StatPill icon="check"    value={jobCands.filter(c=>['Ausgewählt','Selected'].includes(c.status)).length}        label={lang==='de'?'Ausgewählt':'Selected'}       color="#065F46" bg="#ECFDF5" />
+              <StatPill icon="x"        value={jobCands.filter(c=>['Abgelehnt','Rejected'].includes(c.status)).length}         label={lang==='de'?'Abgelehnt':'Rejected'}        color="#991B1B" bg="#FEF2F2" />
+            </div>
           </div>
         )}
         <div className="section-header">
@@ -340,7 +360,11 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
       {showForm && !editMode && renderJobForm(tj.addTitle)}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         {jobs.map(j => {
-          const cnt = candidates.filter(c=>c.jobId===j.id).length
+          const jc        = candidates.filter(c=>c.jobId===j.id)
+          const total     = jc.length
+          const firstIv   = jc.filter(c=>['Erstgespräch','First Interview'].includes(c.status)).length
+          const selected  = jc.filter(c=>['Ausgewählt','Selected'].includes(c.status)).length
+          const rejected  = jc.filter(c=>['Abgelehnt','Rejected'].includes(c.status)).length
           return (
             <div key={j.id} className="card" style={{ cursor:'pointer' }}
               onClick={() => setSelected(j.id)}
@@ -381,10 +405,16 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                   </span>
                 ))}
               </div>
+              {/* Stats row: total / first interview / selected / rejected */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:10 }}>
+                <StatPill icon="users"    value={total}    label={lang==='de'?'Gesamt':'Total'}          color="#555"    bg="#F7F7F5" />
+                <StatPill icon="calendar" value={firstIv}  label={lang==='de'?'Erstgespr.':'1st Interview'} color="#92400E" bg="#FEF3C7" />
+                <StatPill icon="check"    value={selected} label={lang==='de'?'Ausgew.':'Selected'}       color="#065F46" bg="#ECFDF5" />
+                <StatPill icon="x"        value={rejected} label={lang==='de'?'Abgelehnt':'Rejected'}      color="#991B1B" bg="#FEF2F2" />
+              </div>
+
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <span style={{ display:'inline-flex',alignItems:'center',gap:5,fontSize:11,color:'#aaa',background:'#F7F7F5',padding:'3px 8px',borderRadius:6 }}>
-                  <Icon name="users" size={11} color="#bbb" />{cnt} {tj.candidates}
-                </span>
+                <span style={{ fontSize:11, color:'#ccc' }}></span>
                 <span style={{ fontSize:11, color:'#ccc' }}>{tj.since} {j.createdAt}</span>
               </div>
             </div>
