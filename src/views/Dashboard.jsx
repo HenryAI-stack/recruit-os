@@ -3,6 +3,14 @@ import Badge    from '../components/Badge.jsx'
 import Icon     from '../components/Icon.jsx'
 import { useT } from '../lib/i18n.jsx'
 
+// Backward-compatible: new records use ivStatus string, old ones use done:boolean
+function getIvStatus(iv) {
+  if (iv.ivStatus === 'noshow')  return 'noshow'
+  if (iv.ivStatus === 'done')    return 'done'
+  if (iv.ivStatus === 'planned') return 'planned'
+  return iv.done ? 'done' : 'planned'
+}
+
 const AV_COLORS = [['#EBF4FF','#1A56DB'],['#ECFDF5','#065F46'],['#FEF3C7','#92400E'],['#F0EEFF','#4C1D95'],['#FEF2F2','#991B1B']]
 function Avatar({ name, photo, size=34 }) {
   if (photo) return <img src={photo} alt="" style={{ width:size,height:size,borderRadius:'50%',objectFit:'cover',flexShrink:0 }} />
@@ -16,10 +24,10 @@ export default function Dashboard({ jobs, candidates, interviews, onNavigate }) 
   const td = t.dashboard
 
   const openJobs = jobs.filter(j=>j.isOpen).length
-  const doneIv   = interviews.filter(i=>i.done).length
+  const doneIv   = interviews.filter(i=>getIvStatus(i)==='done').length
   const selected = candidates.filter(c=>c.status==='Ausgewählt').length
   const recent   = [...candidates].reverse().slice(0,4)
-  const upcoming = interviews.filter(i=>!i.done).slice(0,4)
+  const upcoming = interviews.filter(i=>getIvStatus(i)==='planned').slice(0,4)
 
   const stats = [
     { label:td.openJobs,    value:openJobs,          sub:td.ofTotal.replace('{n}',jobs.length),        icon:'briefcase' },
