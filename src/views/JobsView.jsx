@@ -1,5 +1,5 @@
 // src/views/JobsView.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Badge       from '../components/Badge.jsx'
 import Icon        from '../components/Icon.jsx'
 import { useT }    from '../lib/i18n.jsx'
@@ -14,7 +14,7 @@ function Avatar({ name, photo, size=28 }) {
 
 const EMPTY = { title:'', dept:'', location:'', desc:'', links:[], isOpen:true }
 
-export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive, onSelectCandidate }) {
+export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive, onSelectCandidate, returnToJobId, onReturnConsumed }) {
   const { t, lang, TYPE_DISPLAY } = useT()
   const tj = t.jobs; const tc = t.common
 
@@ -28,6 +28,16 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
   const [expandedDesc,      setExpandedDesc]      = useState(new Set())
   const [showMoreCandidates,setShowMoreCandidates]= useState(false)
   const [detailDescExpanded,setDetailDescExpanded]= useState(false)
+
+  // Restore job detail when returning from a candidate opened via this view
+  useEffect(() => {
+    if (returnToJobId) {
+      setSelected(returnToJobId)
+      setShowForm(false); setEditMode(false)
+      setShowMoreCandidates(false); setDetailDescExpanded(false)
+      onReturnConsumed?.()
+    }
+  }, [returnToJobId])
 
   const job = jobs.find(j=>j.id===selected)
   const F   = (k,v) => setForm(f=>({...f,[k]:v}))
@@ -173,7 +183,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                 </thead>
                 <tbody>
                   {ranked.map((c, i) => (
-                    <tr key={c.id} onClick={() => onSelectCandidate?.(c.id)} style={{ cursor: onSelectCandidate ? 'pointer' : 'default' }}>
+                    <tr key={c.id} onClick={() => onSelectCandidate?.(c.id, job.id)} style={{ cursor: onSelectCandidate ? 'pointer' : 'default' }}>
                       <td style={{ fontSize:18, textAlign:'center' }}>{medals[i]}</td>
                       <td style={{ fontWeight:600, color: onSelectCandidate ? '#1A56DB' : undefined }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -264,7 +274,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
                     </thead>
                     <tbody>
                       {others.map(c => (
-                        <tr key={c.id} onClick={() => onSelectCandidate?.(c.id)} style={{ cursor: onSelectCandidate ? 'pointer' : 'default' }}>
+                        <tr key={c.id} onClick={() => onSelectCandidate?.(c.id, job.id)} style={{ cursor: onSelectCandidate ? 'pointer' : 'default' }}>
                           <td style={{ fontWeight:500, color: onSelectCandidate ? '#1A56DB' : undefined }}>
                             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                               <Avatar name={`${c.firstName} ${c.lastName}`} photo={c.photo} size={28} />
