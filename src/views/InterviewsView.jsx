@@ -123,6 +123,11 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
   const completed = filtered.filter(i=>getIvStatus(i)==='done')
   const noshow    = filtered.filter(i=>getIvStatus(i)==='noshow')
 
+  // Interviews whose candidateId no longer matches any existing candidate
+  // (e.g. candidate was deleted). These render as nothing in the normal
+  // sections, so surface them separately with a delete option.
+  const orphaned = interviews.filter(iv => !candidates.find(c => c.id === iv.candidateId))
+
   // ── Edit handlers ────────────────────────────────────────────────────────
   function startEdit(iv) {
     setEditForm({ type:iv.type, scheduledAt:iv.scheduledAt||'', interviewer:iv.interviewer||'', ivStatus:getIvStatus(iv), done:iv.done, feedback:iv.feedback||'', rating:iv.rating||0 })
@@ -421,6 +426,46 @@ export default function InterviewsView({ jobs, candidates, interviews, persistIn
             </span>
           </div>
           {noshow.map(iv=><div key={iv.id}>{renderIvCard(iv)}</div>)}
+        </div>
+      )}
+
+      {/* Orphaned interviews — candidate no longer exists */}
+      {orphaned.length>0 && (
+        <div style={{ marginTop:24, padding:'14px 16px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:10 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8, marginBottom:10 }}>
+            <span style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, fontWeight:700, color:'#92400E' }}>
+              ⚠ {lang==='de' ? 'Fehlerhafte Gespräche' : 'Orphaned interviews'}
+              <span style={{ fontSize:11, color:'#B45309', fontWeight:400 }}>({orphaned.length})</span>
+            </span>
+            <button
+              onClick={async () => {
+                if (!window.confirm(lang==='de' ? `${orphaned.length} fehlerhafte Gespräche löschen?` : `Delete ${orphaned.length} orphaned interview(s)?`)) return
+                const ids = new Set(orphaned.map(o=>o.id))
+                await persistInterviews(interviews.filter(i=>!ids.has(i.id)))
+              }}
+              style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', border:'1px solid #FCA5A5', background:'#fff', color:'#991B1B', fontFamily:'inherit' }}>
+              <Icon name="trash" size={12} color="#991B1B" />{lang==='de' ? 'Alle löschen' : 'Delete all'}
+            </button>
+          </div>
+          <p style={{ fontSize:11, color:'#92400E', marginBottom:10, lineHeight:1.5 }}>
+            {lang==='de'
+              ? 'Diese Gespräche verweisen auf einen Bewerber, der nicht mehr existiert (z. B. gelöscht oder archiviert).'
+              : 'These interviews reference a candidate that no longer exists (e.g. deleted or archived).'}
+          </p>
+          {orphaned.map(iv => (
+            <div key={iv.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'8px 10px', background:'#fff', borderRadius:8, marginBottom:6, fontSize:12 }}>
+              <div style={{ color:'#555' }}>
+                <strong>{TYPE_DISPLAY[iv.type]||iv.type}</strong>
+                {' · '}{iv.interviewer || (lang==='de'?'kein Interviewer':'no interviewer')}
+                {' · '}{iv.scheduledAt?.replace('T',' ').slice(0,16) || tc.noData}
+                <span style={{ color:'#bbb', marginLeft:6 }}>candidateId: {iv.candidateId || '–'}</span>
+              </div>
+              <button onClick={async () => { await persistInterviews(interviews.filter(i=>i.id!==iv.id)) }}
+                style={{ border:'none', background:'none', cursor:'pointer', color:'#EF4444', display:'flex', flexShrink:0 }}>
+                <Icon name="trash" size={14} color="#EF4444" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
