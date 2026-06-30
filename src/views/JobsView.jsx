@@ -24,6 +24,27 @@ function StatPill({ icon, value, label, color, bg }) {
   )
 }
 
+// All interview-stage types (DE + EN) — covers First/Technical/Specialist/HR/Final interviews
+const INTERVIEW_STAGE_TYPES = [
+  'Erstgespräch','First Interview',
+  'Technisches Gespräch','Technical Interview',
+  'Fachgespräch','Specialist Interview',
+  'HR-Interview','HR Interview',
+  'Finalgespräch','Final Interview',
+]
+
+// Count candidates (excluding Selected/Rejected) who have at least one
+// interview record of any in-progress interview type.
+function countInterviewStage(candidateList, interviews) {
+  const FINAL = ['Ausgewählt','Selected','Abgelehnt','Rejected']
+  const activeIds = new Set(
+    (interviews||[])
+      .filter(iv => INTERVIEW_STAGE_TYPES.includes(iv.type))
+      .map(iv => iv.candidateId)
+  )
+  return candidateList.filter(c => !FINAL.includes(c.status) && activeIds.has(c.id)).length
+}
+
 const EMPTY = { title:'', dept:'', location:'', desc:'', links:[], isOpen:true }
 
 export default function JobsView({ jobs, candidates, interviews, persistJobs, onArchive, onSelectCandidate, returnToJobId, onReturnConsumed }) {
@@ -166,7 +187,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
             {/* Stats row */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginTop:16 }}>
               <StatPill icon="users"    value={jobCands.length}                                                              label={lang==='de'?'Gesamt':'Total'}             color="#555"    bg="#F7F7F5" />
-              <StatPill icon="calendar" value={jobCands.filter(c=>['Erstgespräch','First Interview'].includes(c.status)).length} label={lang==='de'?'Erstgespräch':'1st Interview'} color="#92400E" bg="#FEF3C7" />
+              <StatPill icon="calendar" value={countInterviewStage(jobCands, interviews)} label={lang==='de'?'Interview':'Interview'} color="#92400E" bg="#FEF3C7" />
               <StatPill icon="check"    value={jobCands.filter(c=>['Ausgewählt','Selected'].includes(c.status)).length}        label={lang==='de'?'Ausgewählt':'Selected'}       color="#065F46" bg="#ECFDF5" />
               <StatPill icon="x"        value={jobCands.filter(c=>['Abgelehnt','Rejected'].includes(c.status)).length}         label={lang==='de'?'Abgelehnt':'Rejected'}        color="#991B1B" bg="#FEF2F2" />
             </div>
@@ -362,7 +383,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
         {jobs.map(j => {
           const jc        = candidates.filter(c=>c.jobId===j.id)
           const total     = jc.length
-          const firstIv   = jc.filter(c=>['Erstgespräch','First Interview'].includes(c.status)).length
+          const firstIv   = countInterviewStage(jc, interviews)
           const selected  = jc.filter(c=>['Ausgewählt','Selected'].includes(c.status)).length
           const rejected  = jc.filter(c=>['Abgelehnt','Rejected'].includes(c.status)).length
           return (
@@ -408,7 +429,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
               {/* Stats row: total / first interview / selected / rejected */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:10 }}>
                 <StatPill icon="users"    value={total}    label={lang==='de'?'Gesamt':'Total'}          color="#555"    bg="#F7F7F5" />
-                <StatPill icon="calendar" value={firstIv}  label={lang==='de'?'Erstgespr.':'1st Interview'} color="#92400E" bg="#FEF3C7" />
+                <StatPill icon="calendar" value={firstIv}  label={lang==='de'?'Interview':'Interview'} color="#92400E" bg="#FEF3C7" />
                 <StatPill icon="check"    value={selected} label={lang==='de'?'Ausgew.':'Selected'}       color="#065F46" bg="#ECFDF5" />
                 <StatPill icon="x"        value={rejected} label={lang==='de'?'Abgelehnt':'Rejected'}      color="#991B1B" bg="#FEF2F2" />
               </div>
