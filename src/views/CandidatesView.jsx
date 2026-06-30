@@ -181,7 +181,7 @@ function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t })
   )
 }
 
-export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user, openCandidateId, onCandidateOpened, fromView, onBack }) {
+export default function CandidatesView({ jobs, candidates, interviews, persistCandidates, persistInterviews, user, openCandidateId, onCandidateOpened, fromView, fromJobId, onBack }) {
   const { t, STATUS_DISPLAY, TYPE_DISPLAY, lang } = useT()
   const tc = t.common; const tca = t.candidates; const ti = t.interviews
 
@@ -494,10 +494,10 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
       <div>
         <button className="btn btn-sm" onClick={() => {
           setSelected(null); setShowForm(false); setEditCand(false); setShowIvForm(false); setEditingIvId(null)
-          if (fromView) onBack(fromView)
+          if (fromView) onBack(fromView, fromJobId)
         }} style={{ marginBottom:20 }}>
           <Icon name="arrowLeft" size={14} />
-          {fromView === 'jobs' ? (lang==='de'?'Zurück zu Stellenangeboten':'Back to Jobs') :
+          {fromView === 'jobs' ? (lang==='de'?'Zurück zur Stelle':'Back to Job') :
            fromView === 'interviews' ? (lang==='de'?'Zurück zu Gesprächen':'Back to Interviews') :
            tc.back}
         </button>
