@@ -136,7 +136,7 @@ export default function App() {
         {view === 'jobs'       && <JobsView       {...shared} onArchive={handleArchive} onSelectCandidate={goToCandidate} returnToJobId={returnToJobId} onReturnConsumed={() => setReturnToJobId(null)} />}
         {view === 'candidates' && <CandidatesView {...shared} user={user} openCandidateId={openCandidateId} onCandidateOpened={() => setOpenCandidateId(null)} fromView={fromView} fromJobId={fromJobId} onBack={(v, jid) => { setFromView(null); setFromJobId(null); if (jid) setReturnToJobId(jid); setView(v || 'candidates') }} />}
         {view === 'interviews' && <InterviewsView {...shared} onSelectCandidate={goToCandidate} />}
-        {view === 'archive'    && <ArchiveView    archives={archives} persistArchives={persistArchives} onRestore={handleRestore} />}
+        {view === 'archive'    && <ArchiveView    archives={archives} onRestore={handleRestore} />}
         {view === 'notes'      && <NotesView      notes={notesText} persistNotes={persistNotes} />}
       </main>
     </div>

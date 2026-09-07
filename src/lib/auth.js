@@ -9,11 +9,11 @@ const firebaseConfig = {
 }
 
 const app      = initializeApp(firebaseConfig)
-export const auth     = getAuth(app)
+const auth     = getAuth(app)
 const provider = new GoogleAuthProvider()
 
 // Only this email is allowed to access the system
-export const ALLOWED_EMAIL = import.meta.env.VITE_ALLOWED_EMAIL
+const ALLOWED_EMAIL = import.meta.env.VITE_ALLOWED_EMAIL
 
 export async function loginWithGoogle() {
   const result = await signInWithPopup(auth, provider)

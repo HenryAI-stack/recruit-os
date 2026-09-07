@@ -40,14 +40,6 @@ export async function improveText(text, lang) {
   return callAI(system, text)
 }
 
-export async function extractResumeInfo(resumeText, lang) {
-  if (!resumeText || resumeText.trim().length < 50) return null
-  const system = lang === 'de'
-    ? 'Lies den Lebenslauf und schreibe einen prägnanten Ersteindruck (4–6 Sätze): Kernkompetenzen, Erfahrung, Ausbildung, Stärken. Nur Fließtext, kein Präambel.'
-    : 'Read this resume and write a concise first impression (4–6 sentences): core skills, experience, education, standout qualities. Plain text only, no preamble.'
-  return callAI(system, resumeText.slice(0, 6000))
-}
-
 export async function extractCandidateInfo(resumeText, lang) {
   if (!resumeText || resumeText.trim().length < 50) return null
   const tpl = '{"firstName":"","lastName":"","email":"","phone":"","mobile":"","address":"","birthday":"","notes":""}'

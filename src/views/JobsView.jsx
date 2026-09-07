@@ -295,7 +295,7 @@ export default function JobsView({ jobs, candidates, interviews, persistJobs, on
             <div style={{ marginTop:12 }}>
               <button onClick={() => setShowMoreCandidates(v=>!v)}
                 style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#1A56DB', background:'none', border:'none', cursor:'pointer', padding:'4px 0', fontFamily:'inherit', fontWeight:500 }}>
-                <Icon name={showMoreCandidates?'chevronRight':'chevronRight'} size={14} color="#1A56DB"
+                <Icon name="chevronRight" size={14} color="#1A56DB"
                   style={{ transform: showMoreCandidates ? 'rotate(90deg)' : 'rotate(0deg)', transition:'transform .2s' }} />
                 {showMoreCandidates
                   ? (lang==='de'?'Weniger anzeigen':'Show less')

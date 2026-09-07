@@ -65,35 +65,3 @@ export async function saveCollection(name, data) {
   const encrypted = await encrypt(data)
   await putFile(`${name}.enc`, encrypted, sha)
 }
-
-/**
- * Helper: add one item to a collection and persist.
- */
-export async function addItem(name, item) {
-  const list = await loadCollection(name)
-  list.push({ ...item, id: crypto.randomUUID(), createdAt: new Date().toISOString() })
-  await saveCollection(name, list)
-  return list
-}
-
-/**
- * Helper: update one item in a collection and persist.
- */
-export async function updateItem(name, id, patch) {
-  const list = await loadCollection(name)
-  const idx = list.findIndex(x => x.id === id)
-  if (idx === -1) throw new Error(`Item ${id} not found in ${name}`)
-  list[idx] = { ...list[idx], ...patch, updatedAt: new Date().toISOString() }
-  await saveCollection(name, list)
-  return list
-}
-
-/**
- * Helper: delete one item from a collection and persist.
- */
-export async function deleteItem(name, id) {
-  const list = await loadCollection(name)
-  const filtered = list.filter(x => x.id !== id)
-  await saveCollection(name, filtered)
-  return filtered
-}
