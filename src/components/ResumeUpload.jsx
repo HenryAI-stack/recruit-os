@@ -3,9 +3,9 @@ import { useState, useRef } from 'react'
 import { useT }             from '../lib/i18n.jsx'
 import Icon                 from './Icon.jsx'
 import { saveResume, loadResume, deleteResume, extractText } from '../lib/resume.js'
-import { extractResumeInfo } from '../lib/ai.js'
+import { extractCandidateInfo } from '../lib/ai.js'
 
-export default function ResumeUpload({ candidateId, hasResume, onResumeChange, onNotesExtracted }) {
+export default function ResumeUpload({ candidateId, hasResume, onResumeChange, onDataExtracted }) {
   const { lang }              = useT()
   const inputRef              = useRef()
   const [uploading,  setUploading]  = useState(false)
@@ -59,11 +59,13 @@ export default function ResumeUpload({ candidateId, hasResume, onResumeChange, o
       const text = await extractText(file)
       if (!text || text.trim().length < 50) throw new Error('Could not extract text')
 
-      // 4. AI summary → notes
-      const summary = await extractResumeInfo(text, lang)
-      if (summary) {
-        onNotesExtracted(summary)
-        showStatus(de ? 'Notizen aus Lebenslauf extrahiert ✓' : 'Notes extracted from resume ✓')
+      // 4. AI → structured candidate fields
+      const data = await extractCandidateInfo(text, lang)
+      if (data && typeof data === 'object') {
+        onDataExtracted(data)
+        showStatus(de ? 'Daten aus Lebenslauf extrahiert ✓' : 'Data extracted from resume ✓')
+      } else {
+        throw new Error(de ? 'KI konnte keine Daten extrahieren' : 'AI could not extract data')
       }
     } catch(e) {
       setError(de ? `Fehler: ${e.message}` : `Error: ${e.message}`)
@@ -133,7 +135,7 @@ export default function ResumeUpload({ candidateId, hasResume, onResumeChange, o
             onClick={handleExtract} disabled={extracting || uploading}>
             {extracting
               ? <><span style={{ width:8,height:8,borderRadius:'50%',background:'#7C3AED',display:'inline-block',animation:'pulse 1s ease-in-out infinite' }} />{de?'KI extrahiert…':'AI extracting…'}</>
-              : <><Icon name="star" size={13} color="#7C3AED" />{de?'In Notizen extrahieren':'Extract to Notes'}</>
+              : <><Icon name="star" size={13} color="#7C3AED" />{de?'Daten extrahieren':'Extract Data'}</>
             }
           </button>
         )}

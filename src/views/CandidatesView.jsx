@@ -83,7 +83,7 @@ function Field({ label,value,onChange,placeholder,multiline,select,type }) {
   )
 }
 
-function IvForm({ initial, jobs, candidateId, candidates, onSave, onCancel, t }) {
+function IvForm({ initial, candidateId, candidates, onSave, onCancel, t }) {
   const { lang } = useT()
   const [f,             setF]             = useState(initial)
   const [improving,     setImproving]     = useState(false)
@@ -621,7 +621,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
           )}
         </div>
         {showIvForm && !editingIvId && (
-          <IvForm initial={ivEmpty(user?.displayName)} jobs={jobs} candidateId={selected} candidates={candidates}
+          <IvForm initial={ivEmpty(user?.displayName)} candidateId={selected} candidates={candidates}
             onSave={handleSaveIv} onCancel={() => setShowIvForm(false)} t={t} />
         )}
         {civs.length===0 && !showIvForm && (
@@ -633,7 +633,7 @@ export default function CandidatesView({ jobs, candidates, interviews, persistCa
         {civs.map(iv => (
           <div key={iv.id}>
             {editingIvId===iv.id
-              ? <IvForm initial={editIv||ivEmpty(user?.displayName)} jobs={jobs} candidateId={selected} candidates={candidates}
+              ? <IvForm initial={editIv||ivEmpty(user?.displayName)} candidateId={selected} candidates={candidates}
                   onSave={handleSaveIv} onCancel={() => setEditingIvId(null)} t={t} />
               : (
                 <div style={{ display:'flex', gap:12, marginBottom:14, padding:'14px 16px', background:'#fff', border:'1px solid #EBEBEA', borderRadius:12, boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>

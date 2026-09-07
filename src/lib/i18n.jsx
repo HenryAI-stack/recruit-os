@@ -1,9 +1,6 @@
 // src/lib/i18n.jsx
 import { createContext, useContext, useState } from 'react'
 
-export const STATUSES_EN = ['Applied', 'First Interview', 'Technical Interview', 'Selected', 'Rejected']
-export const STATUSES_DE = ['Eingegangen', 'Erstgespräch', 'Technisches Gespräch', 'Ausgewählt', 'Abgelehnt']
-
 // Status keys are stored in German in the DB → map to display label
 export const STATUS_DISPLAY = {
   en: {
