@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local env files (secrets — injected at build time via CI)
+.env.local
+.env.*.local
